@@ -240,6 +240,7 @@ let currentYearId = null;
 let years = [];
 let currentUserEmail = '';
 let currentSiteSection = 'texts';
+let viewingYearId = null;
 
 const SITE_SECTIONS = [
   { key:'texts', label:'頁面文字' },
@@ -351,7 +352,8 @@ async function renderMembers(){
   const { data: payments } = await sb.from('member_payments').select('*');
 
   let html = `<div class="section-title">會員名冊（共 ${members.length} 人）</div>`;
-  html += `<input placeholder="搜尋學號或姓名…" oninput="filterMembers(this.value)" style="margin-bottom:14px;">`;
+  html += `<button class="btn btn-ghost btn-sm" style="margin-bottom:10px;" onclick="exportMembersCSV()">匯出會員名冊 CSV</button>`;
+  html += `<input placeholder="搜尋學號或姓名…" oninput="filterMembers(this.value)" style="margin-bottom:14px;">` ;
   html += `<div id="member-list">`;
   members.forEach(m=>{
     const mine = (payments||[]).filter(p=>p.student_no===m.student_no);
@@ -397,6 +399,24 @@ async function cyclePayment(student_no, target_year, curStatus){
   renderMembers();
 }
 
+async function exportMembersCSV(){
+  const { data: members } = await sb.from('members').select('*').order('student_no');
+  const { data: payments } = await sb.from('member_payments').select('*');
+  const rows = (members||[]).map(m=>{
+    const mine = (payments||[]).filter(p=>p.student_no===m.student_no);
+    const row = {
+      學號: m.student_no, 姓名: m.name, 年級: m.grade, 繳費方式: m.payment_type,
+      追溯補繳: m.is_retroactive ? '是' : '否'
+    };
+    [1,2,3,4,5].forEach(y=>{
+      const p = mine.find(x=>x.target_year===y);
+      row['第'+y+'期'] = p ? p.status : '未建立';
+    });
+    return row;
+  });
+  exportCSV(`會員名冊_${new Date().toISOString().slice(0,10)}.csv`, rows);
+}
+
 /* ============================================================
    活動 Tab
 ============================================================ */
@@ -404,24 +424,80 @@ async function renderEvents(){
   const main = document.getElementById('main');
   if(!currentYearId){ main.innerHTML = '<div class="empty">請先到「屆別」分頁設定使用中的屆數</div>'; return; }
   const { data: events } = await sb.from('events').select('*').eq('year_id', currentYearId).order('event_date', { ascending:false });
+  const { data: tx } = await sb.from('finances').select('*').eq('year_id', currentYearId);
+
   let html = `<div class="section-title">本屆活動</div>`;
+  html += `<button class="btn btn-ghost btn-sm" style="margin-bottom:10px;" onclick="exportEventsCSV()">匯出活動成本報告 CSV</button>`;
   if(!events || !events.length){ html += '<div class="empty">尚無活動，點右下角＋新增</div>'; }
   else{
     events.forEach(e=>{
       const badgeCls = e.status==='已結束' ? 'badge-green' : e.status==='取消' ? 'badge-red' : 'badge-amber';
+      const actualCost = (tx||[]).filter(t=>t.event_id===e.id && t.tx_type==='支出').reduce((s,t)=>s+Number(t.amount),0);
+      const participants = e.act_participants || e.est_participants || 0;
+      const perHead = participants ? (actualCost/participants).toFixed(1) : '—';
+      const budgetLine = e.budget
+        ? `<div class="card-sub mono" style="margin-top:4px;">預算 $${Number(e.budget).toLocaleString()}　實際 $${actualCost.toLocaleString()}　${actualCost>e.budget?'<span style="color:var(--rust);">超支</span>':'<span style="color:var(--moss);">未超支</span>'}</div>`
+        : (actualCost ? `<div class="card-sub mono" style="margin-top:4px;">實際支出 $${actualCost.toLocaleString()}</div>` : '');
       html += `
       <div class="card">
         <div class="acc-no mono">E-${String(e.id).padStart(4,'0')}</div>
         <div class="card-row"><span class="card-name">${e.event_name}</span></div>
         <div class="card-sub">負責人：${e.manager_name}　${e.event_date||''}</div>
-        <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+        ${budgetLine}
+        ${participants ? `<div class="card-sub mono">參加人數 ${participants}　人均成本 $${perHead}</div>` : ''}
+        <div style="margin-top:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <span class="badge ${badgeCls}">${e.status}</span>
           <button class="btn btn-ghost btn-sm" onclick="cycleEventStatus(${e.id}, '${e.status}')">變更狀態</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditEventModal(${e.id})">編輯預算/人數</button>
         </div>
       </div>`;
     });
   }
   main.innerHTML = html;
+}
+
+async function exportEventsCSV(){
+  const { data: events } = await sb.from('events').select('*').eq('year_id', currentYearId);
+  const { data: tx } = await sb.from('finances').select('*').eq('year_id', currentYearId);
+  const rows = (events||[]).map(e=>{
+    const actualCost = (tx||[]).filter(t=>t.event_id===e.id && t.tx_type==='支出').reduce((s,t)=>s+Number(t.amount),0);
+    const participants = e.act_participants || e.est_participants || 0;
+    return {
+      活動名稱: e.event_name, 負責人: e.manager_name, 日期: e.event_date||'', 狀態: e.status,
+      預算: e.budget||'', 實際支出: actualCost, 預估人數: e.est_participants||'', 實際人數: e.act_participants||'',
+      人均成本: participants ? (actualCost/participants).toFixed(1) : ''
+    };
+  });
+  exportCSV(`活動成本報告_${new Date().toISOString().slice(0,10)}.csv`, rows);
+}
+
+function openEditEventModal(id){
+  sb.from('events').select('*').eq('id', id).single().then(({data:e})=>{
+    if(!e) return;
+    const modal = document.getElementById('modal');
+    modal.innerHTML = `
+    <h3>編輯活動預算與人數</h3>
+    <label>預算</label><input id="f-e_budget" type="number" value="${e.budget||''}">
+    <label>預估參加人數</label><input id="f-e_est" type="number" value="${e.est_participants||''}">
+    <label>實際參加人數</label><input id="f-e_act" type="number" value="${e.act_participants||''}">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitEditEvent(${id})">儲存</button>
+    </div>`;
+    document.getElementById('modal-backdrop').classList.add('show');
+  });
+}
+
+async function submitEditEvent(id){
+  const budget = document.getElementById('f-e_budget').value;
+  const est = document.getElementById('f-e_est').value;
+  const act = document.getElementById('f-e_act').value;
+  await sb.from('events').update({
+    budget: budget ? Number(budget) : null,
+    est_participants: est ? Number(est) : null,
+    act_participants: act ? Number(act) : null
+  }).eq('id', id);
+  closeModal(); showToast('已更新'); renderEvents();
 }
 
 async function cycleEventStatus(id, cur){
@@ -444,6 +520,7 @@ async function renderFinances(){
   (tx||[]).forEach(t=>{ if(t.tx_type==='收入') income+=Number(t.amount); else expense+=Number(t.amount); });
 
   let html = `<div class="section-title">本屆財務</div>`;
+  html += `<button class="btn btn-ghost btn-sm" style="margin-bottom:10px;" onclick="exportYearFinanceCSV(currentYearId)">匯出本屆財務 CSV</button>`;
   html += `<div class="card" style="padding:14px;">
     <div class="card-row"><span class="card-sub">收入</span><span class="mono" style="color:var(--moss); font-weight:700;">$${income.toLocaleString()}</span></div>
     <div class="card-row"><span class="card-sub">支出</span><span class="mono" style="color:var(--rust); font-weight:700;">$${expense.toLocaleString()}</span></div>
@@ -489,6 +566,7 @@ async function uploadReceipt(txId, file){
 ============================================================ */
 async function renderYears(){
   const main = document.getElementById('main');
+  if(viewingYearId){ await renderYearDetail(viewingYearId); return; }
   let html = `<div class="section-title">歷屆設定</div>`;
   if(!years.length){ html += '<div class="empty">尚無屆數資料，點右下角＋新增</div>'; }
   years.forEach(y=>{
@@ -498,10 +576,87 @@ async function renderYears(){
       <div class="acc-no mono">Y-${y.id}</div>
       <div class="card-row"><span class="card-name">${y.year_name}</span>${active?'<span class="badge badge-green">使用中</span>':''}</div>
       <div class="card-sub">負責人：${y.president_name}　${y.start_date} ～ ${y.end_date}</div>
-      ${!active ? `<div style="margin-top:8px;"><button class="btn btn-ghost btn-sm" onclick="setCurrentYear(${y.id})">切換為使用中</button></div>` : ''}
+      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+        ${!active ? `<button class="btn btn-ghost btn-sm" onclick="setCurrentYear(${y.id})">切換為使用中</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="viewYearDetail(${y.id})">查看該屆資料</button>
+      </div>
     </div>`;
   });
   main.innerHTML = html;
+}
+
+function viewYearDetail(id){
+  viewingYearId = id;
+  document.getElementById('fab').style.display = 'none';
+  renderYearDetail(id);
+}
+
+async function renderYearDetail(yearId){
+  document.getElementById('fab').style.display = 'none';
+  const main = document.getElementById('main');
+  const yr = years.find(y=>y.id===yearId);
+  const { data: events } = await sb.from('events').select('*').eq('year_id', yearId).order('event_date');
+  const { data: tx } = await sb.from('finances').select('*').eq('year_id', yearId).order('tx_date');
+
+  let income=0, expense=0;
+  (tx||[]).forEach(t=>{ if(t.tx_type==='收入') income+=Number(t.amount); else expense+=Number(t.amount); });
+
+  let html = `<button class="btn btn-ghost btn-sm" style="margin-bottom:12px;" onclick="backToYears()">← 返回屆別列表</button>`;
+  html += `<div class="section-title">${yr?yr.year_name:''}　歷屆資料</div>`;
+  html += `<div class="card" style="padding:14px;">
+    <div class="card-row"><span class="card-sub">活動數</span><span class="mono" style="font-weight:700;">${(events||[]).length}</span></div>
+    <div class="card-row"><span class="card-sub">收入</span><span class="mono" style="color:var(--moss); font-weight:700;">$${income.toLocaleString()}</span></div>
+    <div class="card-row"><span class="card-sub">支出</span><span class="mono" style="color:var(--rust); font-weight:700;">$${expense.toLocaleString()}</span></div>
+    <div class="card-row"><span class="card-sub">結餘</span><span class="mono" style="font-weight:700;">$${(income-expense).toLocaleString()}</span></div>
+  </div>`;
+  html += `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+    <button class="btn btn-ghost btn-sm" onclick="exportYearEventsCSV(${yearId})">匯出該屆活動 CSV</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportYearFinanceCSV(${yearId})">匯出該屆財務 CSV</button>
+  </div>`;
+
+  html += `<div class="field-group-title">活動（共 ${(events||[]).length} 筆）</div>`;
+  if(!events || !events.length){ html += '<div class="empty">該屆尚無活動</div>'; }
+  else{
+    events.forEach(e=>{
+      html += `<div class="card"><div class="card-name">${e.event_name}</div><div class="card-sub">負責人：${e.manager_name}　${e.event_date||''}　${e.status}</div></div>`;
+    });
+  }
+
+  html += `<div class="field-group-title">財務（共 ${(tx||[]).length} 筆）</div>`;
+  if(!tx || !tx.length){ html += '<div class="empty">該屆尚無財務紀錄</div>'; }
+  else{
+    tx.forEach(t=>{
+      const amtColor = t.tx_type==='收入' ? 'var(--moss)' : 'var(--rust)';
+      const sign = t.tx_type==='收入' ? '+' : '−';
+      html += `<div class="card"><div class="card-row"><span class="card-name">${t.item_name}</span><span class="mono" style="color:${amtColor};">${sign}$${Number(t.amount).toLocaleString()}</span></div><div class="card-sub">${t.tx_date}</div></div>`;
+    });
+  }
+  main.innerHTML = html;
+}
+
+function backToYears(){
+  viewingYearId = null;
+  document.getElementById('fab').style.display = 'block';
+  renderYears();
+}
+
+async function exportYearEventsCSV(yearId){
+  const yr = years.find(y=>y.id===yearId);
+  const { data: events } = await sb.from('events').select('*').eq('year_id', yearId);
+  const rows = (events||[]).map(e=>({
+    活動名稱: e.event_name, 負責人: e.manager_name, 日期: e.event_date||'', 狀態: e.status,
+    預算: e.budget||'', 預估人數: e.est_participants||'', 實際人數: e.act_participants||''
+  }));
+  exportCSV(`${yr?yr.year_name:'屆數'}_活動紀錄.csv`, rows);
+}
+
+async function exportYearFinanceCSV(yearId){
+  const yr = years.find(y=>y.id===yearId);
+  const { data: tx } = await sb.from('finances').select('*').eq('year_id', yearId);
+  const rows = (tx||[]).map(t=>({
+    日期: t.tx_date, 項目: t.item_name, 類型: t.tx_type, 金額: t.amount, 狀態: t.status
+  }));
+  exportCSV(`${yr?yr.year_name:'屆數'}_財務紀錄.csv`, rows);
 }
 
 /* ============================================================
@@ -633,6 +788,8 @@ function openAddModal(){
     <label>活動名稱</label><input id="f-event_name">
     <label>負責人</label><input id="f-manager_name">
     <label>活動日期</label><input id="f-event_date" type="date">
+    <label>預算（選填）</label><input id="f-event_budget" type="number">
+    <label>預估參加人數（選填）</label><input id="f-event_est" type="number">
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">取消</button>
       <button class="btn btn-primary" onclick="submitEvent()">新增</button>
@@ -715,6 +872,8 @@ async function submitEvent(){
   if(!currentYearId){ showToast('請先設定使用中屆數'); return; }
   const event_name = document.getElementById('f-event_name').value.trim();
   if(!event_name){ showToast('請填寫活動名稱'); return; }
+  const budget = document.getElementById('f-event_budget').value;
+  const est = document.getElementById('f-event_est').value;
   const { error } = await sb.from('events').insert({
     year_id: currentYearId, event_name,
     manager_name: document.getElementById('f-manager_name').value.trim(),
