@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>英文系學會 · 幹部後台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#16233B;
+    --ink-soft:#3C4A63;
+    --paper:#EDEAE1;
+    --paper-card:#F7F5EF;
+    --brass:#A9822F;
+    --brass-soft:#D9C68F;
+    --rust:#9C4130;
+    --moss:#2F6B4E;
+    --amber:#B4791F;
+    --line:#D8D2C2;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Noto Sans TC',sans-serif;
+    min-height:100vh; min-height:100dvh;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .serif{font-family:'Noto Serif TC',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  #app{display:none; min-height:100dvh; flex-direction:column;}
+  #app.show{display:flex;}
+
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:var(--ink); color:var(--paper-card);
+    padding:14px 18px calc(14px + env(safe-area-inset-top)) 18px;
+    padding-top:calc(14px + env(safe-area-inset-top));
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom:3px double var(--brass-soft);
+  }
+  header.top .title{font-family:'Noto Serif TC',serif; font-weight:700; font-size:17px; letter-spacing:.02em;}
+  header.top .year-badge{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--brass-soft);
+    border:1px solid var(--brass-soft); border-radius:20px; padding:3px 10px;
+  }
+
+  main{flex:1; overflow-y:auto; padding:16px 14px 90px 14px;}
+
+  .section-title{
+    font-family:'Noto Serif TC',serif; font-weight:700; font-size:15px;
+    color:var(--ink); margin:4px 2px 10px 2px; display:flex; align-items:center; gap:8px;
+  }
+  .section-title::after{content:""; flex:1; height:1px; background:var(--line);}
+  .field-group-title{ font-size:12.5px; font-weight:700; color:var(--brass); margin:18px 2px 8px 2px; text-transform:uppercase; letter-spacing:.04em; }
+
+  .card{
+    position:relative; background:var(--paper-card);
+    border:1px solid var(--line); border-radius:2px 10px 10px 2px;
+    padding:14px 14px 14px 22px; margin-bottom:12px;
+    box-shadow:2px 3px 0 rgba(22,35,59,0.05);
+  }
+  .card::before{
+    content:""; position:absolute; left:8px; top:16px;
+    width:8px; height:8px; border-radius:50%;
+    background:var(--paper); border:1px solid var(--line);
+  }
+  .card .acc-no{
+    position:absolute; top:10px; right:12px;
+    font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-soft); opacity:.6;
+  }
+  .card-row{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
+  .card-name{font-weight:700; font-size:15px;}
+  .card-sub{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+
+  .badge{
+    display:inline-block; font-size:11px; font-weight:600; padding:3px 9px;
+    border-radius:20px; white-space:nowrap;
+  }
+  .badge-green{background:#E4EFE7; color:var(--moss);}
+  .badge-red{background:#F3E2DE; color:var(--rust);}
+  .badge-amber{background:#F5E9D6; color:var(--amber);}
+  .badge-grey{background:#E4E1D6; color:var(--ink-soft);}
+
+  .btn{
+    border:none; border-radius:8px; padding:10px 16px; font-weight:600; font-size:13px;
+    cursor:pointer; font-family:'Noto Sans TC',sans-serif;
+  }
+  .btn-primary{background:var(--ink); color:var(--paper-card);}
+  .btn-ghost{background:transparent; color:var(--ink); border:1px solid var(--line);}
+  .btn-sm{padding:6px 10px; font-size:11.5px; border-radius:6px;}
+  .btn:active{opacity:.8;}
+
+  .fab{
+    position:fixed; right:18px; bottom:calc(84px + env(safe-area-inset-bottom));
+    width:52px; height:52px; border-radius:50%; background:var(--rust); color:#fff;
+    font-size:26px; border:none; box-shadow:0 4px 10px rgba(0,0,0,0.25); z-index:15;
+  }
+
+  nav.bottom{
+    position:fixed; left:0; right:0; bottom:0; z-index:20;
+    background:var(--ink); display:flex;
+    padding-bottom:env(safe-area-inset-bottom);
+    border-top:3px double var(--brass-soft);
+  }
+  nav.bottom button{
+    flex:1; background:none; border:none; padding:10px 0 8px 0;
+    color:#8E9AB0; display:flex; flex-direction:column; align-items:center; gap:3px;
+    font-size:10px; font-family:'Noto Sans TC',sans-serif;
+  }
+  nav.bottom button.active{color:var(--brass-soft);}
+  nav.bottom svg{width:19px; height:19px;}
+
+  input, select, textarea{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
+    font-size:14px; background:#fff; font-family:'Noto Sans TC',sans-serif; color:var(--ink);
+  }
+  label{font-size:12px; color:var(--ink-soft); font-weight:600; display:block; margin:10px 0 4px 0;}
+
+  .modal-backdrop{
+    position:fixed; inset:0; background:rgba(22,35,59,0.55); z-index:50;
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .modal-backdrop.show{display:flex;}
+  .modal{
+    background:var(--paper-card); width:100%; max-width:480px;
+    border-radius:16px 16px 0 0; padding:20px 20px calc(24px + env(safe-area-inset-bottom)) 20px;
+    max-height:88vh; overflow-y:auto;
+  }
+  .modal h3{font-family:'Noto Serif TC',serif; margin:0 0 4px 0; font-size:17px;}
+  .modal-actions{display:flex; gap:10px; margin-top:18px;}
+  .modal-actions .btn{flex:1;}
+
+  .pay-grid{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;}
+  .pay-chip{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; padding:5px 9px; border-radius:6px;
+    border:1px solid var(--line); background:#fff; cursor:pointer;
+  }
+
+  #login-screen{
+    min-height:100dvh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:var(--ink); color:var(--paper-card); padding:24px; text-align:center;
+  }
+  #login-screen h1{font-family:'Noto Serif TC',serif; font-size:22px; margin-bottom:4px;}
+  #login-screen p{color:#8E9AB0; font-size:13px; margin-bottom:24px;}
+  #login-screen .box{width:100%; max-width:340px; text-align:left;}
+  #login-screen .btn-primary{width:100%; margin-top:14px; padding:12px;}
+  #login-err{color:#E0917F; font-size:12.5px; margin-top:10px; min-height:16px;}
+
+  .chip-row{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:14px;}
+  .chip-row::-webkit-scrollbar{display:none;}
+  .chip{
+    flex:0 0 auto; font-size:12.5px; font-weight:600; padding:7px 14px; border-radius:20px;
+    border:1px solid var(--line); background:#fff; color:var(--ink-soft); white-space:nowrap;
+  }
+  .chip.active{background:var(--ink); color:var(--paper-card); border-color:var(--ink);}
+  .card-thumb{width:100%; height:120px; object-fit:cover; border-radius:6px; margin-bottom:10px; background:var(--paper);}
+  .card-actions{display:flex; gap:8px; margin-top:10px;}
+
+  .empty{text-align:center; color:var(--ink-soft); font-size:13px; padding:30px 10px;}
+  .toast{
+    position:fixed; bottom:110px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:#fff; padding:9px 18px; border-radius:20px;
+    font-size:12.5px; z-index:60; opacity:0; transition:opacity .25s; pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<!-- ============ 登入畫面 ============ -->
+<div id="login-screen">
+  <div class="box">
+    <h1>英文系學會</h1>
+    <p>幹部後台 · 請使用幹部帳號登入</p>
+    <label>電子信箱</label>
+    <input id="login-email" type="email" placeholder="officer@example.com">
+    <label>密碼</label>
+    <input id="login-pass" type="password" placeholder="••••••••">
+    <button class="btn btn-primary" onclick="doLogin()">登入</button>
+    <div id="login-err"></div>
+  </div>
+</div>
+
+<!-- ============ 主應用程式 ============ -->
+<div id="app">
+  <header class="top">
+    <div class="title">英文系學會 · 幹部後台</div>
+    <div class="year-badge" id="year-badge">尚未設定屆數</div>
+  </header>
+
+  <main id="main"></main>
+
+  <button class="fab" id="fab" onclick="openAddModal()">＋</button>
+
+  <nav class="bottom">
+    <button class="tab-btn active" data-tab="members" onclick="switchTab('members')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>
+      會員
+    </button>
+    <button class="tab-btn" data-tab="events" onclick="switchTab('events')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="5" width="16" height="15" rx="1.5"/><path d="M4 9h16M8 3v4M16 3v4"/></svg>
+      活動
+    </button>
+    <button class="tab-btn" data-tab="finances" onclick="switchTab('finances')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="13" rx="1.5"/><path d="M3 10h18M7 14h3"/></svg>
+      財務
+    </button>
+    <button class="tab-btn" data-tab="years" onclick="switchTab('years')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      屆別
+    </button>
+    <button class="tab-btn" data-tab="site" onclick="switchTab('site')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="1.5"/><path d="M3 9h18M8 13h4"/></svg>
+      網站
+    </button>
+  </nav>
+</div>
+
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal" id="modal"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   設定區：請填入你自己的 Supabase 專案資訊
+   Supabase 後台 → Project Settings → API
+   重要：這裡只填「專案根網址」，不要加 /rest/v1/ 之類的路徑！
+============================================================ */
+const SUPABASE_URL = 'https://rcyepntkdhicofojeauv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjeWVwbnRrZGhpY29mb2plYXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NjQ0NTMsImV4cCI6MjEwMDE0MDQ1M30.vpPO7D5XrbEDrESfYynOcKqTRlYRPnxy7GkV-KLH-WU';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentTab = 'members';
+let currentYearId = null;
+let years = [];
+let currentUserEmail = '';
+let currentSiteSection = 'texts';
+
+const SITE_SECTIONS = [
+  { key:'texts', label:'頁面文字' },
+  { key:'sponsors', label:'贊助商' },
+  { key:'membership', label:'會員福利' },
+  { key:'regulations', label:'章程規範' },
+  { key:'portfolio', label:'作品集' },
+  { key:'faq', label:'FAQ' },
+  { key:'feedback_view', label:'回饋留言' }
+];
+
+/* 頁面文字欄位設定：每一組都會同時顯示中文／英文輸入框 */
+const TEXT_FIELDS = [
+  { group:'首頁與系介紹', key:'hero_desc', label:'首頁開場文案' },
+  { group:'首頁與系介紹', key:'about_p1', label:'系介紹 · 段落一' },
+  { group:'首頁與系介紹', key:'about_p2', label:'系介紹 · 段落二' },
+  { group:'首頁與系介紹', key:'org_desc', label:'組織架構說明' },
+  { group:'各區塊標題旁說明', key:'about_desc', label:'01 學會介紹 · 說明文字' },
+  { group:'各區塊標題旁說明', key:'events_desc', label:'02 活動資訊 · 說明文字' },
+  { group:'各區塊標題旁說明', key:'sponsors_desc', label:'03 贊助商 · 說明文字' },
+  { group:'各區塊標題旁說明', key:'membership_desc', label:'04 會員福利 · 說明文字' },
+  { group:'各區塊標題旁說明', key:'regulations_desc', label:'05 章程規範 · 說明文字' },
+  { group:'各區塊標題旁說明', key:'finance_desc', label:'06 財務公開 · 說明文字' },
+  { group:'各區塊標題旁說明', key:'query_desc', label:'07 繳費查詢 · 說明文字' },
+  { group:'各區塊標題旁說明', key:'portfolio_desc', label:'08 作品集 · 說明文字' },
+  { group:'各區塊標題旁說明', key:'contact_desc', label:'09 聯繫我們 · 說明文字' },
+  { group:'聯絡資訊', key:'contact_email', label:'Email 那一行文字' },
+  { group:'聯絡資訊', key:'contact_ig', label:'Instagram 那一行文字' },
+  { group:'聯絡資訊', key:'contact_line', label:'Line 那一行文字' },
+  { group:'聯絡資訊', key:'feedback_desc', label:'匿名回饋區說明文字' }
+];
+
+/* ---------- 登入 ---------- */
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const errBox = document.getElementById('login-err');
+  errBox.textContent = '';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if(error){ errBox.textContent = '登入失敗：'+(error.message||'帳號或密碼錯誤'); return; }
+  currentUserEmail = data.user.email;
+  await boot();
+}
+
+async function checkSession(){
+  const { data } = await sb.auth.getSession();
+  if(data.session){
+    currentUserEmail = data.session.user.email;
+    await boot();
+  }
+}
+
+async function boot(){
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  await loadYears();
+  switchTab('members');
+}
+
+/* ---------- 屆數 ---------- */
+async function loadYears(){
+  const { data: settings } = await sb.from('app_settings').select('*').eq('key','current_year_id').single();
+  const { data: yrs } = await sb.from('academic_years').select('*').order('id', { ascending:false });
+  years = yrs || [];
+  currentYearId = settings && settings.value ? parseInt(settings.value) : (years[0] ? years[0].id : null);
+  const yr = years.find(y => y.id === currentYearId);
+  document.getElementById('year-badge').textContent = yr ? yr.year_name : '尚未設定屆數';
+}
+
+async function setCurrentYear(id){
+  await sb.from('app_settings').upsert({ key:'current_year_id', value:String(id) });
+  currentYearId = id;
+  await loadYears();
+  renderTab();
+  showToast('已切換使用中屆數');
+}
+
+/* ---------- Tab 切換 ---------- */
+function switchTab(tab){
+  currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  renderTab();
+}
+
+async function renderTab(){
+  const main = document.getElementById('main');
+  main.innerHTML = '<div class="empty">載入中…</div>';
+  if(currentTab==='members'){ document.getElementById('fab').style.display='block'; await renderMembers(); }
+  else if(currentTab==='events'){ document.getElementById('fab').style.display='block'; await renderEvents(); }
+  else if(currentTab==='finances'){ document.getElementById('fab').style.display='flex'; await renderFinances(); }
+  else if(currentTab==='years'){ document.getElementById('fab').style.display='block'; await renderYears(); }
+  else if(currentTab==='site') await renderSite();
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ============================================================
+   會員 Tab
+============================================================ */
+async function renderMembers(){
+  const main = document.getElementById('main');
+  const { data: members } = await sb.from('members').select('*').order('student_no');
+  if(!members || !members.length){ main.innerHTML='<div class="empty">目前沒有會員資料，點右下角＋新增</div>'; return; }
+
+  const { data: payments } = await sb.from('member_payments').select('*');
+
+  let html = `<div class="section-title">會員名冊（共 ${members.length} 人）</div>`;
+  html += `<input placeholder="搜尋學號或姓名…" oninput="filterMembers(this.value)" style="margin-bottom:14px;">`;
+  html += `<div id="member-list">`;
+  members.forEach(m=>{
+    const mine = (payments||[]).filter(p=>p.student_no===m.student_no);
+    const curPay = mine.find(p=>p.target_year===parseInt(m.grade));
+    const statusBadge = !curPay ? '<span class="badge badge-grey">尚無紀錄</span>'
+      : curPay.status==='已足額' ? '<span class="badge badge-green">本學年已足額</span>'
+      : curPay.status==='寬免免繳' ? '<span class="badge badge-grey">寬免免繳</span>'
+      : '<span class="badge badge-red">本學年未足額</span>';
+    html += `
+    <div class="card member-card" data-search="${m.student_no} ${m.name}">
+      <div class="acc-no mono">M-${m.student_no}</div>
+      <div class="card-row"><span class="card-name">${m.name}</span></div>
+      <div class="card-sub mono">${m.student_no}　${m.grade}年級　${m.payment_type}${m.is_retroactive?'（已追溯補繳）':''}</div>
+      <div style="margin-top:8px;">${statusBadge}</div>
+      <div class="pay-grid">
+        ${[1,2,3,4,5].map(y=>{
+          const p = mine.find(x=>x.target_year===y);
+          const label = !p ? '未建立' : p.status;
+          return `<span class="pay-chip" onclick="cyclePayment('${m.student_no}', ${y}, '${p?p.status:''}')">${y}年 · ${label}</span>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+  main.innerHTML = html;
+}
+
+function filterMembers(q){
+  q = q.trim().toLowerCase();
+  document.querySelectorAll('.member-card').forEach(c=>{
+    c.style.display = c.dataset.search.toLowerCase().includes(q) ? 'block' : 'none';
+  });
+}
+
+async function cyclePayment(student_no, target_year, curStatus){
+  const order = ['', '未足額', '已足額', '寬免免繳'];
+  const idx = order.indexOf(curStatus);
+  const next = order[(idx+1) % order.length] || '未足額';
+  await sb.from('member_payments').upsert({
+    student_no, target_year, status: next, handler_name: currentUserEmail, updated_at: new Date().toISOString()
+  }, { onConflict:'student_no,target_year' });
+  showToast(`已更新 ${student_no} 第${target_year}期為「${next}」`);
+  renderMembers();
+}
+
+/* ============================================================
+   活動 Tab
+============================================================ */
+async function renderEvents(){
+  const main = document.getElementById('main');
+  if(!currentYearId){ main.innerHTML = '<div class="empty">請先到「屆別」分頁設定使用中的屆數</div>'; return; }
+  const { data: events } = await sb.from('events').select('*').eq('year_id', currentYearId).order('event_date', { ascending:false });
+  let html = `<div class="section-title">本屆活動</div>`;
+  if(!events || !events.length){ html += '<div class="empty">尚無活動，點右下角＋新增</div>'; }
+  else{
+    events.forEach(e=>{
+      const badgeCls = e.status==='已結束' ? 'badge-green' : e.status==='取消' ? 'badge-red' : 'badge-amber';
+      html += `
+      <div class="card">
+        <div class="acc-no mono">E-${String(e.id).padStart(4,'0')}</div>
+        <div class="card-row"><span class="card-name">${e.event_name}</span></div>
+        <div class="card-sub">負責人：${e.manager_name}　${e.event_date||''}</div>
+        <div style="margin-top:8px; display:flex; align-items:center; gap:8px;">
+          <span class="badge ${badgeCls}">${e.status}</span>
+          <button class="btn btn-ghost btn-sm" onclick="cycleEventStatus(${e.id}, '${e.status}')">變更狀態</button>
+        </div>
+      </div>`;
+    });
+  }
+  main.innerHTML = html;
+}
+
+async function cycleEventStatus(id, cur){
+  const order = ['籌備中','已結束','取消'];
+  const next = order[(order.indexOf(cur)+1)%order.length];
+  await sb.from('events').update({ status: next }).eq('id', id);
+  showToast('活動狀態已更新為「'+next+'」');
+  renderEvents();
+}
+
+/* ============================================================
+   財務 Tab
+============================================================ */
+async function renderFinances(){
+  const main = document.getElementById('main');
+  if(!currentYearId){ main.innerHTML = '<div class="empty">請先到「屆別」分頁設定使用中的屆數</div>'; return; }
+  const { data: tx } = await sb.from('finances').select('*').eq('year_id', currentYearId).order('tx_date', { ascending:false });
+
+  let income=0, expense=0;
+  (tx||[]).forEach(t=>{ if(t.tx_type==='收入') income+=Number(t.amount); else expense+=Number(t.amount); });
+
+  let html = `<div class="section-title">本屆財務</div>`;
+  html += `<div class="card" style="padding:14px;">
+    <div class="card-row"><span class="card-sub">收入</span><span class="mono" style="color:var(--moss); font-weight:700;">$${income.toLocaleString()}</span></div>
+    <div class="card-row"><span class="card-sub">支出</span><span class="mono" style="color:var(--rust); font-weight:700;">$${expense.toLocaleString()}</span></div>
+    <div class="card-row"><span class="card-sub">結餘</span><span class="mono" style="font-weight:700;">$${(income-expense).toLocaleString()}</span></div>
+  </div>`;
+
+  if(!tx || !tx.length){ html += '<div class="empty">尚無財務紀錄，點右下角＋新增</div>'; }
+  else{
+    tx.forEach(t=>{
+      const amtColor = t.tx_type==='收入' ? 'var(--moss)' : 'var(--rust)';
+      const sign = t.tx_type==='收入' ? '+' : '−';
+      const statusBadge = t.status==='已核銷' ? '<span class="badge badge-green">已核銷</span>' : '<span class="badge badge-amber">待核銷</span>';
+      html += `
+      <div class="card">
+        <div class="acc-no mono">F-${String(t.id).padStart(4,'0')}</div>
+        <div class="card-row"><span class="card-name">${t.item_name}</span><span class="mono" style="color:${amtColor}; font-weight:700;">${sign}$${Number(t.amount).toLocaleString()}</span></div>
+        <div class="card-sub">${t.tx_date}</div>
+        <div style="margin-top:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          ${statusBadge}
+          ${t.receipt_image ? `<a href="${t.receipt_image}" target="_blank" style="font-size:11.5px; color:var(--ink-soft);">查看發票</a>` : ''}
+          ${t.status!=='已核銷' ? `<label class="btn btn-ghost btn-sm" style="cursor:pointer;">上傳發票<input type="file" accept="image/*" style="display:none" onchange="uploadReceipt(${t.id}, this.files[0])"></label>` : ''}
+        </div>
+      </div>`;
+    });
+  }
+  main.innerHTML = html;
+}
+
+async function uploadReceipt(txId, file){
+  if(!file) return;
+  showToast('上傳中…');
+  const path = `receipts/${txId}-${Date.now()}-${file.name}`;
+  const { error: upErr } = await sb.storage.from('receipts').upload(path, file, { upsert:true });
+  if(upErr){ showToast('上傳失敗：'+upErr.message); return; }
+  const { data: pub } = sb.storage.from('receipts').getPublicUrl(path);
+  await sb.from('finances').update({ receipt_image: pub.publicUrl, status:'已核銷' }).eq('id', txId);
+  showToast('發票已上傳，自動核銷完成');
+  renderFinances();
+}
+
+/* ============================================================
+   屆別 Tab
+============================================================ */
+async function renderYears(){
+  const main = document.getElementById('main');
+  let html = `<div class="section-title">歷屆設定</div>`;
+  if(!years.length){ html += '<div class="empty">尚無屆數資料，點右下角＋新增</div>'; }
+  years.forEach(y=>{
+    const active = y.id===currentYearId;
+    html += `
+    <div class="card">
+      <div class="acc-no mono">Y-${y.id}</div>
+      <div class="card-row"><span class="card-name">${y.year_name}</span>${active?'<span class="badge badge-green">使用中</span>':''}</div>
+      <div class="card-sub">負責人：${y.president_name}　${y.start_date} ～ ${y.end_date}</div>
+      ${!active ? `<div style="margin-top:8px;"><button class="btn btn-ghost btn-sm" onclick="setCurrentYear(${y.id})">切換為使用中</button></div>` : ''}
+    </div>`;
+  });
+  main.innerHTML = html;
+}
+
+/* ============================================================
+   網站內容 Tab
+============================================================ */
+async function renderSite(){
+  const main = document.getElementById('main');
+  let chipsHtml = `<div class="chip-row">` + SITE_SECTIONS.map(s=>
+    `<div class="chip ${s.key===currentSiteSection?'active':''}" onclick="setSiteSection('${s.key}')">${s.label}</div>`
+  ).join('') + `</div>`;
+
+  if(currentSiteSection==='texts'){
+    document.getElementById('fab').style.display = 'none';
+    const keys = TEXT_FIELDS.map(f=>f.key);
+    const { data: rows } = await sb.from('site_texts').select('*').in('key', keys);
+    const map = {}; (rows||[]).forEach(r=>map[r.key]=r);
+
+    let groupsHtml = '';
+    let lastGroup = null;
+    TEXT_FIELDS.forEach(f=>{
+      if(f.group !== lastGroup){ groupsHtml += `<div class="field-group-title">${f.group}</div>`; lastGroup = f.group; }
+      const row = map[f.key] || {};
+      groupsHtml += `
+      <div class="card" style="padding-left:14px;">
+        <label>${f.label}（中文）</label>
+        <textarea id="tzh-${f.key}" rows="2">${row.value_zh||''}</textarea>
+        <label>${f.label}（English）</label>
+        <textarea id="ten-${f.key}" rows="2">${row.value_en||''}</textarea>
+      </div>`;
+    });
+    main.innerHTML = chipsHtml + `<div class="section-title">頁面文字（雙語）</div>` + groupsHtml +
+      `<button class="btn btn-primary" style="width:100%; margin-top:6px;" onclick="saveSiteTexts()">儲存全部文字</button>`;
+    return;
+  }
+
+  if(currentSiteSection==='feedback_view'){
+    document.getElementById('fab').style.display = 'none';
+    const { data: fb } = await sb.from('feedback').select('*').order('created_at', { ascending:false });
+    let html = chipsHtml + `<div class="section-title">匿名回饋留言</div>`;
+    if(!fb || !fb.length){ html += '<div class="empty">目前還沒有人留言</div>'; }
+    else{
+      fb.forEach(f=>{
+        const t = new Date(f.created_at).toLocaleString('zh-TW');
+        html += `
+        <div class="card">
+          <div class="acc-no mono">#${f.id}</div>
+          <div class="card-sub">${t}${f.contact_info ? '　聯絡方式：'+f.contact_info : ''}</div>
+          <div style="margin-top:6px; font-size:14px;">${f.message}</div>
+          <div class="card-actions"><button class="btn btn-ghost btn-sm" onclick="deleteFeedback(${f.id})">刪除</button></div>
+        </div>`;
+      });
+    }
+    main.innerHTML = html;
+    return;
+  }
+
+  document.getElementById('fab').style.display = 'flex';
+  const { data: cards } = await sb.from('content_cards').select('*').eq('section', currentSiteSection).order('sort_order');
+  let html = chipsHtml + `<div class="section-title">${SITE_SECTIONS.find(s=>s.key===currentSiteSection).label}</div>`;
+  if(!cards || !cards.length){ html += '<div class="empty">尚無資料，點右下角＋新增</div>'; }
+  else{
+    cards.forEach(c=>{
+      html += `
+      <div class="card">
+        <div class="acc-no mono">#${c.sort_order}</div>
+        ${c.image_url ? `<img class="card-thumb" src="${c.image_url}">` : ''}
+        <div class="card-name">${c.title}</div>
+        <div class="card-sub">${c.body||''}</div>
+        ${c.title_en ? `<div class="card-sub" style="margin-top:6px; opacity:.7;">EN: ${c.title_en}${c.body_en?' — '+c.body_en:''}</div>` : ''}
+        <div class="card-actions">
+          <button class="btn btn-ghost btn-sm" onclick="deleteContentCard(${c.id})">刪除</button>
+        </div>
+      </div>`;
+    });
+  }
+  main.innerHTML = html;
+}
+
+function setSiteSection(key){
+  currentSiteSection = key;
+  renderSite();
+}
+
+async function saveSiteTexts(){
+  const rows = TEXT_FIELDS.map(f=>({
+    key: f.key,
+    value_zh: document.getElementById('tzh-'+f.key).value,
+    value_en: document.getElementById('ten-'+f.key).value
+  }));
+  for(const r of rows){ await sb.from('site_texts').upsert(r); }
+  showToast('文字已全部更新');
+}
+
+async function deleteContentCard(id){
+  await sb.from('content_cards').delete().eq('id', id);
+  showToast('已刪除');
+  renderSite();
+}
+
+async function deleteFeedback(id){
+  await sb.from('feedback').delete().eq('id', id);
+  showToast('已刪除');
+  renderSite();
+}
+
+/* ============================================================
+   新增資料 Modal（依 currentTab 顯示不同表單）
+============================================================ */
+function openAddModal(){
+  const modal = document.getElementById('modal');
+  let html = '';
+  if(currentTab==='members'){
+    html = `
+    <h3>新增會員</h3>
+    <label>學號</label><input id="f-student_no">
+    <label>姓名</label><input id="f-name">
+    <label>年級</label>
+    <select id="f-grade"><option value="1">1年級</option><option value="2">2年級</option><option value="3">3年級</option><option value="4">4年級</option><option value="5">5年級</option></select>
+    <label>繳費方式</label>
+    <select id="f-payment_type"><option>一次性</option><option>逐年</option><option>中途入會</option></select>
+    <label style="display:flex; align-items:center; gap:6px; margin-top:12px;"><input type="checkbox" id="f-retro" style="width:auto;"> 已辦理追溯補繳</label>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitMember()">新增</button>
+    </div>`;
+  } else if(currentTab==='events'){
+    html = `
+    <h3>新增活動</h3>
+    <label>活動名稱</label><input id="f-event_name">
+    <label>負責人</label><input id="f-manager_name">
+    <label>活動日期</label><input id="f-event_date" type="date">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitEvent()">新增</button>
+    </div>`;
+  } else if(currentTab==='finances'){
+    html = `
+    <h3>新增財務紀錄</h3>
+    <label>日期</label><input id="f-tx_date" type="date">
+    <label>項目名稱</label><input id="f-item_name">
+    <label>金額</label><input id="f-amount" type="number">
+    <label>類型</label><select id="f-tx_type"><option>支出</option><option>收入</option></select>
+    <label>關聯活動（選填）</label><select id="f-event_id"><option value="">— 無 —</option></select>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitFinance()">新增</button>
+    </div>`;
+  } else if(currentTab==='site' && currentSiteSection!=='texts' && currentSiteSection!=='feedback_view'){
+    const needImage = currentSiteSection==='sponsors' || currentSiteSection==='portfolio';
+    const isFaq = currentSiteSection==='faq';
+    const label1 = isFaq ? '問題' : '標題／名稱';
+    const label2 = isFaq ? '回答' : '說明文字';
+    html = `
+    <h3>新增${SITE_SECTIONS.find(s=>s.key===currentSiteSection).label}</h3>
+    <label>${label1}（中文）</label><input id="f-c_title">
+    <label>${label1}（English，選填）</label><input id="f-c_title_en">
+    <label>${label2}（中文）</label><input id="f-c_body">
+    <label>${label2}（English，選填）</label><input id="f-c_body_en">
+    ${needImage ? `<label>圖片</label><input id="f-c_image" type="file" accept="image/*">` : ''}
+    <label>排序（數字越小越前面）</label><input id="f-c_sort" type="number" value="0">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitContentCard()">新增</button>
+    </div>`;
+  } else if(currentTab==='years'){
+    html = `
+    <h3>新增屆數</h3>
+    <label>屆期名稱（如 2026-2027）</label><input id="f-year_name">
+    <label>負責人</label><input id="f-president_name">
+    <label>開始日期</label><input id="f-start_date" type="date">
+    <label>結束日期</label><input id="f-end_date" type="date">
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="submitYear()">新增</button>
+    </div>`;
+  }
+  if(!html) return;
+  modal.innerHTML = html;
+  document.getElementById('modal-backdrop').classList.add('show');
+  if(currentTab==='finances') populateEventDropdown();
+}
+
+async function populateEventDropdown(){
+  if(!currentYearId) return;
+  const { data: ev } = await sb.from('events').select('id,event_name').eq('year_id', currentYearId);
+  const sel = document.getElementById('f-event_id');
+  (ev||[]).forEach(e=>{
+    const opt = document.createElement('option');
+    opt.value = e.id; opt.textContent = e.event_name;
+    sel.appendChild(opt);
+  });
+}
+
+function closeModal(){ document.getElementById('modal-backdrop').classList.remove('show'); }
+
+async function submitMember(){
+  const student_no = document.getElementById('f-student_no').value.trim();
+  const name = document.getElementById('f-name').value.trim();
+  if(!student_no || !name){ showToast('請填寫學號與姓名'); return; }
+  const { error } = await sb.from('members').insert({
+    student_no, name,
+    grade: document.getElementById('f-grade').value,
+    payment_type: document.getElementById('f-payment_type').value,
+    is_retroactive: document.getElementById('f-retro').checked
+  });
+  if(error){ showToast('新增失敗：'+error.message); return; }
+  closeModal(); showToast('會員已新增'); renderMembers();
+}
+
+async function submitEvent(){
+  if(!currentYearId){ showToast('請先設定使用中屆數'); return; }
+  const event_name = document.getElementById('f-event_name').value.trim();
+  if(!event_name){ showToast('請填寫活動名稱'); return; }
+  const { error } = await sb.from('events').insert({
+    year_id: currentYearId, event_name,
+    manager_name: document.getElementById('f-manager_name').value.trim(),
+    event_date: document.getElementById('f-event_date').value || null
+  });
+  if(error){ showToast('新增失敗：'+error.message); return; }
+  closeModal(); showToast('活動已新增'); renderEvents();
+}
+
+async function submitFinance(){
+  if(!currentYearId){ showToast('請先設定使用中屆數'); return; }
+  const item_name = document.getElementById('f-item_name').value.trim();
+  const amount = document.getElementById('f-amount').value;
+  if(!item_name || !amount){ showToast('請填寫項目與金額'); return; }
+  const event_id = document.getElementById('f-event_id').value || null;
+  const { error } = await sb.from('finances').insert({
+    year_id: currentYearId, event_id,
+    tx_date: document.getElementById('f-tx_date').value || new Date().toISOString().slice(0,10),
+    item_name, amount,
+    tx_type: document.getElementById('f-tx_type').value
+  });
+  if(error){ showToast('新增失敗：'+error.message); return; }
+  closeModal(); showToast('財務紀錄已新增'); renderFinances();
+}
+
+async function submitContentCard(){
+  const title = document.getElementById('f-c_title').value.trim();
+  if(!title){ showToast('請填寫標題'); return; }
+  let image_url = null;
+  const fileInput = document.getElementById('f-c_image');
+  if(fileInput && fileInput.files[0]){
+    showToast('上傳圖片中…');
+    const file = fileInput.files[0];
+    const path = `${currentSiteSection}/${Date.now()}-${file.name}`;
+    const { error: upErr } = await sb.storage.from('site-images').upload(path, file, { upsert:true });
+    if(upErr){ showToast('圖片上傳失敗：'+upErr.message); return; }
+    const { data: pub } = sb.storage.from('site-images').getPublicUrl(path);
+    image_url = pub.publicUrl;
+  }
+  const { error } = await sb.from('content_cards').insert({
+    section: currentSiteSection, title,
+    title_en: document.getElementById('f-c_title_en').value.trim() || null,
+    body: document.getElementById('f-c_body').value.trim(),
+    body_en: document.getElementById('f-c_body_en').value.trim() || null,
+    image_url,
+    sort_order: parseInt(document.getElementById('f-c_sort').value) || 0
+  });
+  if(error){ showToast('新增失敗：'+error.message); return; }
+  closeModal(); showToast('已新增'); renderSite();
+}
+
+async function submitYear(){
+  const year_name = document.getElementById('f-year_name').value.trim();
+  const start_date = document.getElementById('f-start_date').value;
+  const end_date = document.getElementById('f-end_date').value;
+  if(!year_name || !start_date || !end_date){ showToast('請完整填寫欄位'); return; }
+  const { data, error } = await sb.from('academic_years').insert({
+    year_name, start_date, end_date,
+    president_name: document.getElementById('f-president_name').value.trim()
+  }).select().single();
+  if(error){ showToast('新增失敗：'+error.message); return; }
+  closeModal(); showToast('屆數已新增');
+  await setCurrentYear(data.id);
+}
+
+checkSession();
+</script>
+</body>
+</html>
