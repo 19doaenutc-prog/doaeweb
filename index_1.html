@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中科大應用英語科學會網站</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#1B2A41;
+    --ink-soft:#2E3F5C;
+    --paper:#EAE2C8;
+    --paper-soft:#F3EEDC;
+    --stamp-red:#B33A3A;
+    --ledger-green:#3F7359;
+    --gray:#5B584B;
+    --line: rgba(27,42,65,0.18);
+    --radius: 2px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--ink);
+    color:var(--paper);
+    font-family:'Noto Sans TC', sans-serif;
+    line-height:1.7;
+  }
+  h1,h2,h3{ font-family:'Noto Serif TC', serif; letter-spacing:0.02em; }
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  a{ color:inherit; }
+
+  .perf{
+    position:relative;
+    height:28px;
+    background:
+      radial-gradient(circle at center, var(--ink) 5px, transparent 5.5px) repeat-x;
+    background-size: 22px 100%;
+    background-position: center;
+  }
+  .perf::before, .perf::after{
+    content:"";
+    position:absolute; top:50%; width:20px; height:20px;
+    background:var(--ink); border-radius:50%;
+    transform:translateY(-50%);
+  }
+  .perf::before{ left:-10px; }
+  .perf::after{ right:-10px; }
+
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 20px 6vw;
+    background:var(--ink);
+    border-bottom:1px solid rgba(234,226,200,0.15);
+    position:sticky; top:0; z-index:50;
+  }
+  .brand{ display:flex; align-items:center; gap:12px; }
+  .seal{
+    width:40px; height:40px; border-radius:50%;
+    border:2px solid var(--stamp-red);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--stamp-red); font-weight:700; font-size:13px;
+    font-family:'Noto Serif TC', serif;
+    flex-shrink:0;
+  }
+  .brand-name{ font-size:1.05rem; font-weight:700; }
+  .brand-sub{ font-size:0.7rem; color:rgba(234,226,200,0.6); letter-spacing:0.15em; }
+  nav ul{ display:flex; gap:28px; list-style:none; }
+  nav a{ text-decoration:none; font-size:0.9rem; opacity:0.85; transition:opacity 0.2s; }
+  nav a:hover{ opacity:1; }
+  .lang-toggle{
+    border:1px solid rgba(234,226,200,0.4);
+    background:transparent; color:var(--paper);
+    font-family:'JetBrains Mono', monospace; font-size:0.75rem;
+    padding:6px 12px; border-radius:20px; cursor:pointer;
+    transition:background 0.2s;
+  }
+  .lang-toggle:hover{ background:rgba(234,226,200,0.1); }
+  .nav-right{ display:flex; align-items:center; gap:20px; }
+
+  .hero{
+    padding: 90px 6vw 70px;
+    display:grid; grid-template-columns: 1.1fr 0.9fr; gap:60px;
+    align-items:center;
+    max-width:1280px; margin:0 auto;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size:0.75rem;
+    color:var(--stamp-red); letter-spacing:0.2em; margin-bottom:18px;
+    display:flex; align-items:center; gap:10px;
+  }
+  .eyebrow::before{ content:""; width:24px; height:1px; background:var(--stamp-red); }
+  .hero h1{
+    font-size: clamp(2.1rem, 4.2vw, 3.4rem);
+    font-weight:900; line-height:1.3; margin-bottom:22px;
+  }
+  .hero p{ color:rgba(234,226,200,0.75); font-size:1.02rem; max-width:46ch; margin-bottom:32px; }
+  .cta-row{ display:flex; gap:14px; flex-wrap:wrap; }
+  .btn{
+    display:inline-block; padding:13px 26px; border-radius:2px;
+    font-size:0.9rem; font-weight:700; text-decoration:none; cursor:pointer;
+    border:1px solid transparent; transition:transform 0.15s ease, opacity 0.15s ease;
+  }
+  .btn:hover{ transform:translateY(-2px); }
+  .btn-primary{ background:var(--paper); color:var(--ink); }
+  .btn-ghost{ border-color:rgba(234,226,200,0.4); color:var(--paper); }
+
+  .passbook{
+    background:var(--paper);
+    color:var(--ink);
+    border-radius:4px;
+    padding:28px 26px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.35);
+    transform:rotate(2deg);
+    position:relative;
+  }
+  .passbook::after{
+    content:"";
+    position:absolute; inset:10px;
+    border:1px dashed rgba(27,42,65,0.3);
+    pointer-events:none;
+  }
+  .passbook-head{
+    display:flex; justify-content:space-between; align-items:baseline;
+    border-bottom:2px solid var(--ink); padding-bottom:10px; margin-bottom:14px;
+  }
+  .passbook-head span:first-child{ font-family:'Noto Serif TC',serif; font-weight:700; }
+  .passbook-head span:last-child{ font-family:'JetBrains Mono',monospace; font-size:0.7rem; opacity:0.6; }
+  .ledger-row{
+    display:flex; justify-content:space-between; font-size:0.85rem;
+    padding:8px 0; border-bottom:1px dotted rgba(27,42,65,0.25);
+    font-family:'JetBrains Mono', monospace;
+  }
+  .ledger-row .amt-in{ color:var(--ledger-green); }
+  .ledger-row .amt-out{ color:var(--stamp-red); }
+  .passbook-total{
+    margin-top:14px; padding-top:14px; border-top:2px solid var(--ink);
+    display:flex; justify-content:space-between; font-weight:700;
+  }
+
+  section{ padding:80px 6vw; max-width:1280px; margin:0 auto; }
+  .section-head{ display:flex; align-items:baseline; gap:16px; margin-bottom:44px; padding-left:6px; }
+  .section-num{ font-family:'JetBrains Mono',monospace; color:var(--stamp-red); font-size:0.9rem; }
+  .section-head h2{ position:relative; }
+  .section-head h2::after{ content:""; display:block; width:44px; height:2px; background:linear-gradient(90deg, var(--stamp-red), transparent); margin-top:8px; }
+  .section-head h2{ font-size:clamp(1.5rem,2.6vw,2.1rem); }
+  .section-desc{ color:rgba(234,226,200,0.6); font-size:0.92rem; max-width:60ch; margin-top:8px; }
+
+  .about-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:50px; align-items:start; }
+  .about-grid p{ color:rgba(234,226,200,0.78); margin-bottom:16px; }
+  .stat-row{ display:flex; gap:34px; margin-top:26px; flex-wrap:wrap; }
+  .stat b{ display:block; font-family:'JetBrains Mono',monospace; font-size:1.7rem; color:var(--paper); }
+  .stat span{ font-size:0.78rem; color:rgba(234,226,200,0.55); }
+
+  .events{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:22px; }
+  .ticket{
+    background:linear-gradient(145deg, var(--paper), #f7f1df);
+    color:var(--ink);
+    border:1px solid rgba(27,42,65,0.08);
+    border-radius:14px; overflow:hidden;
+    display:flex;
+    box-shadow:0 16px 36px rgba(0,0,0,0.22);
+    transition:transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .ticket:hover{ transform:translateY(-4px); box-shadow:0 22px 44px rgba(0,0,0,0.28); }
+  .ticket-date{
+    background:var(--ink); color:var(--paper);
+    padding:18px 14px; text-align:center; min-width:74px;
+    font-family:'JetBrains Mono',monospace;
+    display:flex; flex-direction:column; justify-content:center;
+  }
+  .ticket-date b{ font-size:1.5rem; display:block; }
+  .ticket-body{ padding:16px 18px; flex:1; }
+  .ticket-body h3{ font-size:1rem; margin-bottom:6px; }
+  .ticket-body p{ font-size:0.8rem; color:var(--gray); }
+
+  .sponsors-carousel{
+    display:flex; gap:18px; overflow-x:auto; scroll-snap-type:x mandatory;
+    padding:4px 4px 16px 4px; -webkit-overflow-scrolling:touch;
+  }
+  .sponsors-carousel::-webkit-scrollbar{ height:6px; }
+  .sponsors-carousel::-webkit-scrollbar-thumb{ background:rgba(234,226,200,0.3); border-radius:3px; }
+  .sponsor-card{
+    background:linear-gradient(145deg, var(--paper), #f7f1df);
+    color:var(--ink); border:1px solid rgba(27,42,65,0.08);
+    border-radius:14px; padding:22px;
+    box-shadow:0 16px 36px rgba(0,0,0,0.22);
+    transition:transform 0.2s ease, box-shadow 0.2s ease;
+    flex:0 0 250px; scroll-snap-align:start;
+  }
+  .sponsor-card:hover{ transform:translateY(-4px); box-shadow:0 22px 44px rgba(0,0,0,0.28); }
+  .sponsor-logo{
+    height:90px; border:1px dashed rgba(27,42,65,0.3); border-radius:3px;
+    display:flex; align-items:center; justify-content:center; margin-bottom:14px;
+    font-family:'Noto Serif TC',serif; font-weight:700; color:var(--gray);
+    background:var(--paper-soft); overflow:hidden;
+  }
+  .sponsor-logo img{ width:100%; height:100%; object-fit:contain; }
+  .sponsor-card h3{ font-size:1rem; margin-bottom:8px; }
+  .sponsor-card p{ font-size:0.8rem; color:var(--gray); }
+  .scroll-hint{ font-size:0.72rem; color:rgba(234,226,200,0.45); margin-bottom:10px; font-family:'JetBrains Mono',monospace; }
+
+  .resource-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:22px; }
+  .resource-card{
+    background:linear-gradient(145deg, var(--paper), #f7f1df);
+    color:var(--ink); border:1px solid rgba(27,42,65,0.08);
+    border-radius:14px; padding:24px;
+    box-shadow:0 16px 36px rgba(0,0,0,0.22);
+    transition:transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .resource-card:hover{ transform:translateY(-4px); box-shadow:0 22px 44px rgba(0,0,0,0.28); }
+  .resource-card img{ width:100%; height:130px; object-fit:cover; border-radius:8px; margin-bottom:12px; }
+  .resource-card h3{ font-size:1rem; margin-bottom:10px; }
+  .resource-card p{ font-size:0.8rem; color:var(--gray); margin-bottom:12px; }
+  .resource-list{ list-style:none; display:grid; gap:8px; }
+  .resource-list li{ font-size:0.82rem; color:var(--gray); padding-left:12px; position:relative; }
+  .resource-list li::before{ content:"•"; position:absolute; left:0; color:var(--stamp-red); }
+  .contact-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:22px; }
+  .contact-card{
+    background:linear-gradient(145deg, var(--paper), #f7f1df);
+    color:var(--ink); border:1px solid rgba(27,42,65,0.08);
+    border-radius:14px; padding:24px;
+    box-shadow:0 20px 40px rgba(0,0,0,0.3);
+    transition:transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .contact-card:hover{ transform:translateY(-4px); box-shadow:0 24px 48px rgba(0,0,0,0.34); }
+  .contact-card b{ display:block; font-family:'Noto Serif TC',serif; margin-bottom:8px; }
+  .contact-card p, .contact-card li{ font-size:0.85rem; color:var(--gray); }
+  .contact-list{ list-style:none; display:grid; gap:8px; margin-top:12px; }
+  .faq-card{
+    margin-top:24px; background:linear-gradient(145deg, var(--paper), #f7f1df);
+    color:var(--ink); border:1px solid rgba(27,42,65,0.08);
+    border-radius:14px; padding:24px; box-shadow:0 20px 40px rgba(0,0,0,0.3);
+  }
+  .faq-card b{ display:block; font-family:'Noto Serif TC',serif; margin-bottom:14px; }
+  .faq-list{ display:grid; gap:10px; }
+  .faq-item{ border:1px solid rgba(27,42,65,0.12); border-radius:10px; padding:12px 14px; background:rgba(255,255,255,0.35); }
+  .faq-item summary{ cursor:pointer; font-weight:700; list-style:none; }
+  .faq-item summary::-webkit-details-marker{ display:none; }
+  .faq-item p{ margin-top:8px; font-size:0.84rem; color:var(--gray); }
+
+  .finance-wrap{ display:grid; grid-template-columns: 1.3fr 0.7fr; gap:40px; }
+  .finance-side{ display:grid; gap:22px; }
+  .ledger-table{
+    background:var(--paper); color:var(--ink); border-radius:4px; padding:26px;
+    box-shadow:0 20px 40px rgba(0,0,0,0.3);
+  }
+  .ledger-table table{ width:100%; border-collapse:collapse; font-size:0.85rem; }
+  .ledger-table th{
+    text-align:left; font-family:'JetBrains Mono',monospace; font-size:0.7rem;
+    text-transform:uppercase; letter-spacing:0.08em; color:var(--gray);
+    padding-bottom:10px; border-bottom:2px solid var(--ink);
+  }
+  .ledger-table td{ padding:10px 0; border-bottom:1px dotted rgba(27,42,65,0.25); font-family:'JetBrains Mono',monospace; }
+  .in{ color:var(--ledger-green); } .out{ color:var(--stamp-red); }
+  .stamp-box{
+    background:rgba(234,226,200,0.06); border:1px solid rgba(234,226,200,0.15);
+    border-radius:4px; padding:24px; text-align:center;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+  }
+  .stamp{
+    width:110px; height:110px; border-radius:50%;
+    border:3px solid var(--stamp-red); color:var(--stamp-red);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Noto Serif TC',serif; font-weight:900; font-size:0.95rem;
+    transform:rotate(-14deg) scale(0.6); opacity:0;
+    transition: transform 0.6s cubic-bezier(.2,1.4,.4,1), opacity 0.6s ease;
+  }
+  .stamp.show{ transform:rotate(-14deg) scale(1); opacity:1; }
+  .stamp-box p{ font-size:0.8rem; color:rgba(234,226,200,0.6); }
+  .finance-extra-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:22px; margin-top:24px; }
+  .finance-card{
+    background:linear-gradient(145deg, var(--paper), #f7f1df); color:var(--ink);
+    border:1px solid rgba(27,42,65,0.08); border-radius:14px; padding:24px;
+    box-shadow:0 16px 36px rgba(0,0,0,0.22);
+  }
+  .finance-card h3{ margin-bottom:10px; font-size:1rem; }
+  .finance-card p{ font-size:0.84rem; color:var(--gray); margin-bottom:12px; }
+  .metric-row{ display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px dotted rgba(27,42,65,0.25); font-size:0.84rem; }
+  .metric-row:last-child{ border-bottom:none; }
+  .chart-card{
+    background:linear-gradient(145deg, var(--paper), #f7f1df); color:var(--ink);
+    border:1px solid rgba(27,42,65,0.08); border-radius:14px; padding:24px;
+    box-shadow:0 16px 36px rgba(0,0,0,0.22);
+  }
+  .bar-row{ display:grid; grid-template-columns:64px 1fr auto; align-items:center; gap:10px; font-size:0.8rem; color:var(--gray); margin-bottom:12px; }
+  .bar{ height:10px; background:rgba(27,42,65,0.1); border-radius:999px; overflow:hidden; }
+  .bar i{ display:block; height:100%; background:linear-gradient(90deg, var(--stamp-red), var(--ledger-green)); border-radius:999px; transition:width 0.6s ease; }
+
+  .query-box{
+    background:linear-gradient(145deg, var(--paper), #f7f1df); color:var(--ink);
+    border:1px solid rgba(27,42,65,0.08); border-radius:14px;
+    padding:30px; max-width:560px; box-shadow:0 20px 40px rgba(0,0,0,0.3);
+  }
+  .query-box label{ font-size:0.8rem; font-family:'JetBrains Mono',monospace; display:block; margin-bottom:8px; }
+  .query-row{ display:flex; gap:10px; }
+  .query-row input{
+    flex:1; padding:12px 14px; border:1px solid rgba(27,42,65,0.3);
+    border-radius:2px; font-family:'JetBrains Mono',monospace; font-size:0.9rem;
+    background:var(--paper-soft);
+  }
+  .query-row button{
+    padding:12px 20px; background:var(--ink); color:var(--paper);
+    border:none; border-radius:2px; cursor:pointer; font-weight:700; font-size:0.85rem;
+  }
+  .query-result{ margin-top:16px; font-size:0.88rem; min-height:24px; font-family:'JetBrains Mono',monospace; }
+  .query-result.paid{ color:var(--ledger-green); }
+  .query-result.unpaid{ color:var(--stamp-red); }
+  .privacy-note{ margin-top:14px; font-size:0.72rem; color:var(--gray); }
+
+  .feedback-input{
+    width:100%; padding:10px 12px; border:1px solid rgba(27,42,65,0.25);
+    border-radius:8px; font-family:'Noto Sans TC',sans-serif; font-size:0.85rem;
+    background:var(--paper-soft); color:var(--ink); margin-bottom:10px; resize:vertical;
+  }
+  .feedback-result{ font-size:0.8rem; margin-top:8px; min-height:18px; }
+  .feedback-result.ok{ color:var(--ledger-green); }
+
+  footer{
+    padding:50px 6vw; text-align:center; color:rgba(234,226,200,0.4);
+    font-size:0.78rem; border-top:1px solid rgba(234,226,200,0.1);
+  }
+  footer a{ text-decoration:underline; }
+
+  @media (max-width: 860px){
+    .hero, .about-grid, .finance-wrap{ grid-template-columns:1fr; }
+    nav{ display:none; }
+    .passbook{ transform:none; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    .stamp{ transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="seal">應英</div>
+    <div>
+      <div class="brand-name" data-i18n="brandName">應用英語科學會</div>
+      <div class="brand-sub" data-i18n="brandSub">Applied English Student Association</div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <nav>
+      <ul>
+        <li><a href="#about" data-i18n="nav1">學會介紹</a></li>
+        <li><a href="#events" data-i18n="nav2">活動資訊</a></li>
+        <li><a href="#sponsors" data-i18n="nav6">贊助商</a></li>
+        <li><a href="#membership" data-i18n="nav7">會員福利</a></li>
+        <li><a href="#regulations" data-i18n="nav8">章程規範</a></li>
+        <li><a href="#finance" data-i18n="nav3">財務公開</a></li>
+        <li><a href="#query" data-i18n="nav4">繳費查詢</a></li>
+        <li><a href="#portfolio" data-i18n="nav9">作品集</a></li>
+        <li><a href="#contact" data-i18n="nav5">聯繫我們</a></li>
+      </ul>
+    </nav>
+    <button class="lang-toggle" onclick="toggleLang()">EN / 中</button>
+  </div>
+</header>
+
+<section class="hero">
+  <div>
+    <div class="eyebrow" data-i18n="heroEyebrow">科學會 · 數位化管理系統</div>
+    <h1 data-i18n="heroTitle">把科學會，經營成一本<br>看得見的帳本。</h1>
+    <p id="hero-desc" data-i18n="heroDesc">從活動資訊、會員福利到財務公開，我們把科學會的每一件事都整理得更透明、更便利，讓每位成員都能輕鬆參與和了解。</p>
+    <div class="cta-row">
+      <a href="#query" class="btn btn-primary" data-i18n="heroBtn1">查詢我的繳費狀態</a>
+      <a href="#contact" class="btn btn-ghost" data-i18n="heroBtn2">聯繫我們</a>
+    </div>
+  </div>
+  <div class="passbook">
+    <div class="passbook-head">
+      <span data-i18n="pbTitle">科學會活動存摺</span>
+      <span id="pb-year">NO. 2026-01</span>
+    </div>
+    <div id="pb-rows"></div>
+    <div class="passbook-total"><span data-i18n="pbBalance">結餘</span><span id="pb-balance">0</span></div>
+  </div>
+</section>
+
+<div class="perf"></div>
+
+<section id="about">
+  <div class="section-head">
+    <span class="section-num">01</span>
+    <div>
+      <h2 data-i18n="aboutTitle">科學會介紹</h2>
+      <p class="section-desc" id="about-desc" data-i18n="aboutDesc">這裡放科學會簡介、宗旨與組織架構，讓新生與外系朋友快速認識我們。</p>
+    </div>
+  </div>
+  <div class="about-grid">
+    <div>
+      <p id="about-p1" data-i18n="aboutP1">應用英語科學會致力於連結系上師生、規劃迎新、學術交流與系務活動，並持續推動資訊透明與資源共享。</p>
+      <p id="about-p2" data-i18n="aboutP2">我們相信，一個好的科學會，不只是辦活動，更是讓每位成員都能參與、看見、一起成長的共同空間。</p>
+      <div class="stat-row">
+        <div class="stat"><b>250+</b><span data-i18n="statA">學生規模</span></div>
+        <div class="stat"><b data-i18n="statYearsValue">5年</b><span data-i18n="statB">專業培養</span></div>
+        <div class="stat"><b data-i18n="statCohortValue">19屆</b><span data-i18n="statC">創立轉型</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="ad-card" style="background:rgba(234,226,200,0.06); border:1px dashed rgba(234,226,200,0.3); border-radius:4px; padding:20px;">
+        <b data-i18n="orgTitle" style="display:block; color:var(--paper); margin-bottom:4px; font-family:'Noto Serif TC',serif;">組織架構</b>
+        <span id="org-desc" data-i18n="orgDesc" style="font-size:0.8rem; color:rgba(234,226,200,0.6);">會長 · 副會長 · 財務長 · 活動組 · 公關組 · 資訊組</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="perf"></div>
+
+<section id="events">
+  <div class="section-head">
+    <span class="section-num">02</span>
+    <div>
+      <h2 data-i18n="eventsTitle">活動資訊</h2>
+      <p class="section-desc" id="events-desc" data-i18n="eventsDesc">本屆活動一覽，資料直接來自後台管理系統。</p>
+    </div>
+  </div>
+  <div class="events" id="events-list">
+    <div style="color:rgba(234,226,200,0.5); font-size:0.85rem;">載入中…</div>
+  </div>
+</section>
+
+<div class="perf"></div>
+
+<section id="sponsors">
+  <div class="section-head">
+    <span class="section-num">03</span>
+    <div>
+      <h2 data-i18n="sponsorsTitle">贊助商資訊</h2>
+      <p class="section-desc" id="sponsors-desc" data-i18n="sponsorsDesc">展示合作贊助商與贊助內容，讓來訪者一眼了解本次活動的支持來源。</p>
+    </div>
+  </div>
+  <div class="scroll-hint">← 左右滑動查看所有贊助商 →</div>
+  <div class="sponsors-carousel" id="sponsors-list">
+    <div style="color:rgba(234,226,200,0.5); font-size:0.85rem;">載入中…</div>
+  </div>
+</section>
+
+<div class="perf"></div>
+
+<section id="membership">
+  <div class="section-head">
+    <span class="section-num">04</span>
+    <div>
+      <h2 data-i18n="membershipTitle">會員福利</h2>
+      <p class="section-desc" id="membership-desc" data-i18n="membershipDesc">提供會員專屬活動優先權、資源共享與社群交流機會，讓每位成員都能更參與科學會。</p>
+    </div>
+  </div>
+  <div class="resource-grid" id="membership-list">
+    <div style="color:rgba(234,226,200,0.5); font-size:0.85rem;">載入中…</div>
+  </div>
+</section>
+
+<div class="perf"></div>
+
+<section id="regulations">
+  <div class="section-head">
+    <span class="section-num">05</span>
+    <div>
+      <h2 data-i18n="regulationsTitle">章程規範</h2>
+      <p class="section-desc" id="regulations-desc" data-i18n="regulationsDesc">整理會員權利義務、活動執行規範與組織運作準則，讓制度更透明。</p>
+    </div>
+  </div>
+  <div class="resource-grid" id="regulations-list">
+    <div style="color:rgba(234,226,200,0.5); font-size:0.85rem;">載入中…</div>
+  </div>
+</section>
+
+<div class="perf"></div>
+
+<section id="finance">
+  <div class="section-head">
+    <span class="section-num">06</span>
+    <div>
+      <h2 data-i18n="financeTitle">財務公開</h2>
+      <p class="section-desc" id="finance-desc" data-i18n="financeDesc">財務資料直接來自後台，每一筆核銷紀錄都同步顯示。</p>
+    </div>
+  </div>
+  <div class="finance-wrap">
+    <div class="ledger-table">
+      <table>
+        <thead><tr><th data-i18n="th1">日期</th><th data-i18n="th2">項目</th><th data-i18n="th3">收入</th><th data-i18n="th4">支出</th></tr></thead>
+        <tbody id="finance-tbody">
+          <tr><td colspan="4" style="color:var(--gray);">載入中…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="finance-side">
+      <div class="stamp-box">
+        <div class="stamp" id="approvalStamp" data-i18n="stampText">財務長<br>已核章</div>
+        <p data-i18n="stampDesc">每月結算後由財務長核章公開，捲動至此區自動觸發蓋章動畫。</p>
+      </div>
+      <div class="chart-card">
+        <h3 style="margin-bottom:16px;">收支比例</h3>
+        <div class="bar-row"><span data-i18n="chartIncome">收入</span><div class="bar"><i id="bar-income" style="width:0%"></i></div><b id="val-income">$0</b></div>
+        <div class="bar-row"><span data-i18n="chartExpense">支出</span><div class="bar"><i id="bar-expense" style="width:0%"></i></div><b id="val-expense">$0</b></div>
+        <div class="bar-row"><span data-i18n="chartBalance">結餘</span><div class="bar"><i id="bar-balance" style="width:0%"></i></div><b id="val-balance">$0</b></div>
+      </div>
+    </div>
+  </div>
+  <div class="finance-extra-grid">
+    <div class="finance-card">
+      <h3 data-i18n="dashboardTitle">財務儀表板</h3>
+      <p data-i18n="dashboardDesc">本屆累計收支即時統計。</p>
+      <div class="metric-row"><span data-i18n="metricIncome">總收入</span><b id="m-income">$0</b></div>
+      <div class="metric-row"><span data-i18n="metricExpense">總支出</span><b id="m-expense">$0</b></div>
+      <div class="metric-row"><span data-i18n="metricBalance">結餘</span><b id="m-balance">$0</b></div>
+      <div class="metric-row"><span data-i18n="metricEvents">活動數</span><b id="m-events">0</b></div>
+    </div>
+    <div class="finance-card">
+      <h3 data-i18n="policyTitle">財務政策說明</h3>
+      <ul class="resource-list">
+        <li data-i18n="policy1">所有支出需先經會議或主管核准後執行。</li>
+        <li data-i18n="policy2">每月結算後會公開帳務摘要與對帳紀錄。</li>
+        <li data-i18n="policy3">如有異常支出，會附上說明與補充附件供查閱。</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="perf"></div>
+
+<section id="query">
+  <div class="section-head">
+    <span class="section-num">07</span>
+    <div>
+      <h2 data-i18n="queryTitle">繳費查詢</h2>
+      <p class="section-desc" id="query-desc" data-i18n="queryDesc">僅需輸入學號即可查詢，不顯示姓名，保護個資。</p>
+    </div>
+  </div>
+  <div class="query-box">
+    <label for="sid" data-i18n="queryLabel">輸入學號查詢繳費狀態</label>
+    <div class="query-row">
+      <input id="sid" placeholder="例如 412345678" class="mono">
+      <button onclick="checkPayment()" data-i18n="queryBtn">查詢</button>
+    </div>
+    <div class="query-result" id="queryResult"></div>
+    <div class="privacy-note" data-i18n="privacyNote">＊查詢結果不會顯示姓名，僅顯示會員資格狀態。</div>
+  </div>
+</section>
+
+<div class="perf"></div>
+
+<section id="portfolio">
+  <div class="section-head">
+    <span class="section-num">08</span>
+    <div>
+      <h2 data-i18n="portfolioTitle">作品集</h2>
+      <p class="section-desc" id="portfolio-desc" data-i18n="portfolioDesc">展示科學會歷年活動成果、設計作品與執行成果，方便外部合作與回顧。</p>
+    </div>
+  </div>
+  <div class="resource-grid" id="portfolio-list">
+    <div style="color:rgba(234,226,200,0.5); font-size:0.85rem;">載入中…</div>
+  </div>
+</section>
+
+<div class="perf"></div>
+
+<section id="contact">
+  <div class="section-head">
+    <span class="section-num">09</span>
+    <div>
+      <h2 data-i18n="contactTitle">聯繫我們</h2>
+      <p class="section-desc" id="contact-desc" data-i18n="contactDesc">若你想了解活動、申請合作、加入會員，或提供建議，歡迎透過以下方式與我們聯絡。</p>
+    </div>
+  </div>
+  <div class="contact-grid">
+    <div class="contact-card">
+      <b data-i18n="contactInfoTitle">聯絡資訊</b>
+      <p data-i18n="contactInfoDesc">可透過 Email、Instagram 或官方 Line 與我們取得聯繫。</p>
+      <ul class="contact-list">
+        <li id="contact-email">Email：studentassociation@email.com</li>
+        <li id="contact-ig">Instagram：@dept_im_sa</li>
+        <li id="contact-line">Line：@imstudentassoc</li>
+      </ul>
+    </div>
+    <div class="contact-card">
+      <b data-i18n="feedbackTitle">匿名回饋</b>
+      <p id="feedback-desc" data-i18n="feedbackDesc">若你有任何想法、建議或合作提案，歡迎在下方留言，我們不會記錄你的身分。</p>
+      <textarea id="feedback-msg" class="feedback-input" rows="3" data-i18n-ph="feedbackPh" placeholder="想跟我們說的話…"></textarea>
+      <input id="feedback-contact" class="feedback-input" data-i18n-ph="feedbackContactPh" placeholder="聯絡方式（選填，方便我們回覆你）">
+      <button class="btn btn-primary" style="color:var(--paper); background:var(--ink); width:100%;" onclick="submitFeedback()" data-i18n="feedbackBtn">送出回饋</button>
+      <div class="feedback-result" id="feedback-result"></div>
+    </div>
+  </div>
+  <div class="faq-card">
+    <b data-i18n="faqTitle">常見問題</b>
+    <div class="faq-list" id="faq-list">
+      <div style="color:var(--gray); font-size:0.85rem;">載入中…</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p data-i18n="footer1">本網站資料由幹部後台即時管理，資料每次更新自動同步，交接免煩惱。</p>
+</footer>
+
+<script>
+/* ============================================================
+   設定區：請填入你自己的 Supabase 專案資訊（跟後台 admin.html 同一組）
+   注意：這裡只填「專案根網址」，不要加 /rest/v1/ 之類的路徑！
+============================================================ */
+const SUPABASE_URL = 'https://rcyepntkdhicofojeauv.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjeWVwbnRrZGhpY29mb2plYXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1NjQ0NTMsImV4cCI6MjEwMDE0MDQ1M30.vpPO7D5XrbEDrESfYynOcKqTRlYRPnxy7GkV-KLH-WU';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentLang = 'zh';
+let siteTextsCache = {};
+let cardsCache = { sponsors:[], membership:[], regulations:[], portfolio:[], faq:[] };
+
+/* ---- 蓋章動畫 ---- */
+const stamp = document.getElementById('approvalStamp');
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{ if(e.isIntersecting) stamp.classList.add('show'); });
+}, { threshold:0.5 });
+io.observe(stamp);
+
+/* ---- 繳費查詢：串接 Supabase RPC（不需登入，不會回傳姓名） ---- */
+async function checkPayment(){
+  const val = document.getElementById('sid').value.trim();
+  const el = document.getElementById('queryResult');
+  if(!val){ el.textContent = currentLang==='zh' ? '請輸入學號' : 'Please enter a student ID'; el.className='query-result'; return; }
+  el.textContent = currentLang==='zh' ? '查詢中…' : 'Checking…';
+  el.className = 'query-result';
+  const { data, error } = await sb.rpc('get_member_status', { p_student_no: val });
+  if(error){ el.textContent = '查詢失敗，請稍後再試'; return; }
+  el.textContent = data.message;
+  el.className = 'query-result ' + (data.status_code===1 ? 'paid' : data.status_code===3 ? 'unpaid' : '');
+}
+
+/* ---- 匿名回饋：直接寫入資料庫，不需登入，也不會知道是誰送的 ---- */
+async function submitFeedback(){
+  const msg = document.getElementById('feedback-msg').value.trim();
+  const contact = document.getElementById('feedback-contact').value.trim();
+  const result = document.getElementById('feedback-result');
+  if(!msg){ result.textContent = currentLang==='zh' ? '請先輸入內容再送出' : 'Please enter a message first'; result.className='feedback-result'; return; }
+  const { error } = await sb.from('feedback').insert({ message: msg, contact_info: contact || null });
+  if(error){ result.textContent = currentLang==='zh' ? '送出失敗，請稍後再試' : 'Failed to submit, please try again'; result.className='feedback-result'; return; }
+  document.getElementById('feedback-msg').value = '';
+  document.getElementById('feedback-contact').value = '';
+  result.textContent = currentLang==='zh' ? '已送出，謝謝你的回饋！' : 'Submitted — thank you!';
+  result.className = 'feedback-result ok';
+}
+
+/* ---- 讀取目前使用中屆數 ---- */
+async function getCurrentYearId(){
+  const { data } = await sb.from('app_settings').select('value').eq('key','current_year_id').single();
+  return data && data.value ? parseInt(data.value) : null;
+}
+
+/* ---- 頁面文字（雙語）：一次抓齊，存進 cache，之後切換語言直接從 cache 取 ---- */
+const TEXT_KEYS = ['hero_desc','about_p1','about_p2','org_desc','about_desc','events_desc','sponsors_desc',
+  'membership_desc','regulations_desc','finance_desc','query_desc','portfolio_desc','contact_desc',
+  'contact_email','contact_ig','contact_line','feedback_desc'];
+const TEXT_ID_MAP = {
+  hero_desc:'hero-desc', about_p1:'about-p1', about_p2:'about-p2', org_desc:'org-desc',
+  about_desc:'about-desc', events_desc:'events-desc', sponsors_desc:'sponsors-desc',
+  membership_desc:'membership-desc', regulations_desc:'regulations-desc', finance_desc:'finance-desc',
+  query_desc:'query-desc', portfolio_desc:'portfolio-desc', contact_desc:'contact-desc',
+  contact_email:'contact-email', contact_ig:'contact-ig', contact_line:'contact-line',
+  feedback_desc:'feedback-desc'
+};
+
+async function loadSiteTexts(){
+  const { data } = await sb.from('site_texts').select('*').in('key', TEXT_KEYS);
+  (data||[]).forEach(row=>{ siteTextsCache[row.key] = row; });
+}
+
+function applySiteTexts(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    if(dict[currentLang][key]) el.innerHTML = dict[currentLang][key];
+  });
+  TEXT_KEYS.forEach(key=>{
+    const row = siteTextsCache[key];
+    const elId = TEXT_ID_MAP[key];
+    const el = document.getElementById(elId);
+    if(!el || !row || el.hasAttribute('data-i18n')) return;
+    const val = (currentLang==='en' ? row.value_en : row.value_zh) || row.value_zh || '';
+    el.textContent = val;
+  });
+}
+
+/* ---- 活動資訊 ---- */
+let eventsCache = [];
+async function loadEvents(yearId){
+  if(!yearId){ eventsCache = []; renderEvents(); return; }
+  const { data } = await sb.from('events').select('*').eq('year_id', yearId).order('event_date');
+  eventsCache = data || [];
+  renderEvents();
+}
+function renderEvents(){
+  const box = document.getElementById('events-list');
+  if(!eventsCache.length){ box.innerHTML = `<div style="color:rgba(234,226,200,0.5);">${currentLang==='zh'?'目前尚無活動':'No events yet'}</div>`; return; }
+  box.innerHTML = eventsCache.map(e=>{
+    const d = e.event_date ? new Date(e.event_date) : null;
+    const day = d ? d.getDate() : '—';
+    const mon = d ? d.toLocaleString('en-US',{month:'short'}).toUpperCase() : '';
+    return `
+    <div class="ticket">
+      <div class="ticket-date"><b>${day}</b><span>${mon}</span></div>
+      <div class="ticket-body"><h3>${e.event_name}</h3><p>${currentLang==='zh'?'負責人':'Lead'}：${e.manager_name}　${e.status}</p></div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- 內容卡片（贊助商 / 會員福利 / 章程規範 / 作品集 / FAQ）通用讀取＋雙語渲染 ---- */
+async function loadContentCards(section){
+  const { data } = await sb.from('content_cards').select('*').eq('section', section).order('sort_order');
+  cardsCache[section] = data || [];
+}
+
+function pick(c, field){
+  const enField = field+'_en';
+  return (currentLang==='en' && c[enField]) ? c[enField] : c[field];
+}
+
+function renderSponsors(){
+  const box = document.getElementById('sponsors-list');
+  const list = cardsCache.sponsors;
+  if(!list.length){ box.innerHTML = `<div style="color:rgba(234,226,200,0.5);">${currentLang==='zh'?'尚無資料':'No data yet'}</div>`; return; }
+  box.innerHTML = list.map(c=>`
+    <div class="sponsor-card">
+      <div class="sponsor-logo">${c.image_url ? `<img src="${c.image_url}">` : (pick(c,'title')||'')}</div>
+      <h3>${pick(c,'title')}</h3>
+      <p>${pick(c,'body')||''}</p>
+    </div>`).join('');
+}
+function renderResourceSection(section, targetId){
+  const box = document.getElementById(targetId);
+  const list = cardsCache[section];
+  if(!list.length){ box.innerHTML = `<div style="color:rgba(234,226,200,0.5);">${currentLang==='zh'?'尚無資料':'No data yet'}</div>`; return; }
+  box.innerHTML = list.map(c=>`
+    <div class="resource-card">
+      ${c.image_url ? `<img src="${c.image_url}">` : ''}
+      <h3>${pick(c,'title')}</h3>
+      <p>${pick(c,'body')||''}</p>
+    </div>`).join('');
+}
+function renderFaq(){
+  const box = document.getElementById('faq-list');
+  const list = cardsCache.faq;
+  if(!list.length){ box.innerHTML = `<div style="color:var(--gray); font-size:0.85rem;">${currentLang==='zh'?'尚無資料':'No data yet'}</div>`; return; }
+  box.innerHTML = list.map(c=>`
+    <details class="faq-item">
+      <summary>${pick(c,'title')}</summary>
+      <p>${pick(c,'body')||''}</p>
+    </details>`).join('');
+}
+
+function renderAllDynamicContent(){
+  applySiteTexts();
+  renderEvents();
+  renderSponsors();
+  renderResourceSection('membership','membership-list');
+  renderResourceSection('regulations','regulations-list');
+  renderResourceSection('portfolio','portfolio-list');
+  renderFaq();
+}
+
+/* ---- 財務公開 ---- */
+async function loadFinance(yearId){
+  const tbody = document.getElementById('finance-tbody');
+  if(!yearId){ tbody.innerHTML = '<tr><td colspan="4">尚未設定屆數</td></tr>'; return; }
+  const { data: tx } = await sb.from('finances').select('*').eq('year_id', yearId).order('tx_date', { ascending:false });
+  const { data: events } = await sb.from('events').select('id').eq('year_id', yearId);
+
+  if(!tx || !tx.length){ tbody.innerHTML = '<tr><td colspan="4">尚無財務紀錄</td></tr>'; }
+  else{
+    tbody.innerHTML = tx.slice(0,8).map(t=>`
+      <tr>
+        <td>${t.tx_date}</td>
+        <td>${t.item_name}</td>
+        <td class="in">${t.tx_type==='收入' ? '+'+Number(t.amount).toLocaleString() : '—'}</td>
+        <td class="out">${t.tx_type==='支出' ? '-'+Number(t.amount).toLocaleString() : '—'}</td>
+      </tr>`).join('');
+  }
+
+  let income=0, expense=0;
+  (tx||[]).forEach(t=>{ if(t.tx_type==='收入') income+=Number(t.amount); else expense+=Number(t.amount); });
+  const balance = income-expense;
+  const max = Math.max(income, expense, Math.abs(balance), 1);
+
+  document.getElementById('m-income').textContent = '$'+income.toLocaleString();
+  document.getElementById('m-expense').textContent = '-$'+expense.toLocaleString();
+  document.getElementById('m-balance').textContent = '$'+balance.toLocaleString();
+  document.getElementById('m-events').textContent = (events||[]).length;
+
+  document.getElementById('val-income').textContent = '$'+income.toLocaleString();
+  document.getElementById('val-expense').textContent = '$'+expense.toLocaleString();
+  document.getElementById('val-balance').textContent = '$'+balance.toLocaleString();
+  document.getElementById('bar-income').style.width = Math.round(income/max*100)+'%';
+  document.getElementById('bar-expense').style.width = Math.round(expense/max*100)+'%';
+  document.getElementById('bar-balance').style.width = Math.round(Math.abs(balance)/max*100)+'%';
+
+  const pbRows = document.getElementById('pb-rows');
+  if(tx && tx.length){
+    pbRows.innerHTML = tx.slice(0,3).map(t=>`
+      <div class="ledger-row"><span>${t.item_name}</span><span class="${t.tx_type==='收入'?'amt-in':'amt-out'}">${t.tx_type==='收入'?'+':'-'}${Number(t.amount).toLocaleString()}</span></div>
+    `).join('');
+  } else {
+    pbRows.innerHTML = `<div class="ledger-row"><span>${currentLang==='zh'?'尚無紀錄':'No records yet'}</span><span>—</span></div>`;
+  }
+  document.getElementById('pb-balance').textContent = balance.toLocaleString();
+}
+
+/* ---- 初始化 ---- */
+async function initSite(){
+  await loadSiteTexts();
+  const yearId = await getCurrentYearId();
+  const { data: yr } = yearId ? await sb.from('academic_years').select('*').eq('id', yearId).single() : { data:null };
+  if(yr) document.getElementById('pb-year').textContent = 'NO. ' + yr.year_name;
+  await Promise.all([
+    loadEvents(yearId),
+    loadFinance(yearId),
+    loadContentCards('sponsors'),
+    loadContentCards('membership'),
+    loadContentCards('regulations'),
+    loadContentCards('portfolio'),
+    loadContentCards('faq')
+  ]);
+  renderAllDynamicContent();
+}
+initSite();
+
+/* ---- 固定介面文字（選單、按鈕等）中英切換 ---- */
+const dict = {
+  zh: {
+    brandName:"應用英語科學會", brandSub:"Applied English Student Association",
+    nav1:"系介紹", nav2:"活動資訊", nav6:"贊助商資訊", nav7:"會員福利", nav8:"章程規範", nav9:"作品集", nav3:"財務公開", nav4:"繳費查詢", nav5:"聯繫我們",
+    heroEyebrow:"科學會 · 數位化管理系統",
+    heroTitle:"把科學會，經營成一本<br>看得見的帳本。",
+    heroDesc:"從活動資訊、會員福利到財務公開，我們把科學會的每一件事都整理得更透明、更便利，讓每位成員都能輕鬆參與和了解。",
+    heroBtn1:"查詢我的繳費狀態", heroBtn2:"聯繫我們",
+    pbTitle:"科學會活動存摺", pbBalance:"結餘",
+    aboutTitle:"系介紹", aboutDesc:"這裡放科學會簡介、宗旨與組織架構，讓新生與外系朋友快速認識我們。", aboutP1:"應用英語科學會致力於連結系上師生、規劃迎新、學術交流與系務活動，並持續推動資訊透明與資源共享。", aboutP2:"我們相信，一個好的科學會，不只是辦活動，更是讓每位成員都能參與、看見、一起成長的共同空間。", statA:"學生規模", statB:"專業培養", statC:"創立轉型", statYearsValue:"5年", statCohortValue:"19屆", orgTitle:"組織架構", orgDesc:"會長 · 副會長 · 財務長 · 活動組 · 公關組 · 資訊組",
+    eventsTitle:"活動資訊", eventsDesc:"本屆活動一覽，資料直接來自後台管理系統。", sponsorsTitle:"贊助商資訊", sponsorsDesc:"展示合作贊助商與贊助內容，讓來訪者一眼了解本次活動的支持來源。",
+    membershipTitle:"會員福利", membershipDesc:"提供會員專屬活動優先權、資源共享與社群交流機會，讓每位成員都能更參與科學會。", regulationsTitle:"章程規範", regulationsDesc:"整理會員權利義務、活動執行規範與組織運作準則，讓制度更透明。", portfolioTitle:"作品集", portfolioDesc:"展示科學會歷年活動成果、設計作品與執行成果，方便外部合作與回顧。",
+    financeTitle:"財務公開", financeDesc:"財務資料直接來自後台，每一筆核銷紀錄都同步顯示。", th1:"日期", th2:"項目", th3:"收入", th4:"支出",
+    stampText:"財務長<br>已核章", stampDesc:"每月結算後由財務長核章公開，捲動至此區自動觸發蓋章動畫。",
+    chartIncome:"收入", chartExpense:"支出", chartBalance:"結餘",
+    dashboardTitle:"財務儀表板", dashboardDesc:"本屆累計收支即時統計。",
+    metricIncome:"總收入", metricExpense:"總支出", metricBalance:"結餘", metricEvents:"活動數",
+    policyTitle:"財務政策說明", policy1:"所有支出需先經會議或主管核准後執行。", policy2:"每月結算後會公開帳務摘要與對帳紀錄。", policy3:"如有異常支出，會附上說明與補充附件供查閱。",
+    queryTitle:"繳費查詢", queryDesc:"僅需輸入學號即可查詢，不顯示姓名，保護個資。", queryLabel:"輸入學號查詢繳費狀態", queryBtn:"查詢",
+    privacyNote:"＊查詢結果不會顯示姓名，僅顯示會員資格狀態。",
+    contactTitle:"聯繫我們", contactDesc:"若你想了解活動、申請合作、加入會員，或提供建議，歡迎透過以下方式與我們聯絡。", contactInfoTitle:"聯絡資訊", contactInfoDesc:"可透過 Email、Instagram 或官方 Line 與我們取得聯繫。",
+    feedbackTitle:"匿名回饋", feedbackDesc:"若你有任何想法、建議或合作提案，歡迎在下方留言，我們不會記錄你的身分。", feedbackBtn:"送出回饋", feedbackPh:"想跟我們說的話…", feedbackContactPh:"聯絡方式（選填，方便我們回覆你）",
+    faqTitle:"常見問題",
+    footer1:"本網站資料由幹部後台即時管理，資料每次更新自動同步，交接免煩惱。"
+  },
+  en: {
+    brandName:"Applied English Student Association", brandSub:"Student Association",
+    nav1:"About", nav2:"Events", nav6:"Sponsors", nav7:"Membership", nav8:"Regulations", nav9:"Portfolio", nav3:"Finance", nav4:"Payment Check", nav5:"Contact Us",
+    heroEyebrow:"Student Association · Digital System",
+    heroTitle:"Run the student association<br>like an open ledger.",
+    heroDesc:"From event updates and member benefits to financial transparency, we organize every part of the student association in a clearer and more convenient way so every member can participate and understand with ease.",
+    heroBtn1:"Check my payment status", heroBtn2:"Contact us",
+    pbTitle:"Association Ledger", pbBalance:"Balance",
+    aboutTitle:"About Us", aboutDesc:"This section introduces the student association's mission, purpose, and structure so new students and visitors can quickly get to know us.", aboutP1:"The Applied English Student Association is committed to connecting students and faculty, organizing orientation activities, academic exchange, and department events, while continuing to promote transparency and resource sharing.", aboutP2:"We believe a strong student association is not only about hosting events, but also about creating a space where every member can participate, see, and grow together.", statA:"Student scale", statB:"Professional training", statC:"Founding transformation", statYearsValue:"5 years", statCohortValue:"19th generation", orgTitle:"Org Structure", orgDesc:"President · Vice President · Treasurer · Events Team · Public Relations Team · IT Team",
+    eventsTitle:"Events", eventsDesc:"A view of this term's events, with content managed directly from the admin system.", sponsorsTitle:"Sponsors", sponsorsDesc:"Showcase our partners and sponsorship contributions so visitors can quickly understand who supports the activities.",
+    membershipTitle:"Membership Benefits", membershipDesc:"Provide members with priority access to activities, shared resources, and community opportunities so they can engage more with the association.", regulationsTitle:"Rules & Regulations", regulationsDesc:"Organize member rights, activity guidelines, and operational standards to make the system more transparent.", portfolioTitle:"Portfolio", portfolioDesc:"Showcase the association's past event results, design work, and execution highlights for partners and reviewers.",
+    financeTitle:"Finance", financeDesc:"Financial records come directly from the backend, and each reimbursement entry is synced in real time.", th1:"Date", th2:"Item", th3:"Income", th4:"Expense",
+    stampText:"Approved<br>by Treasurer", stampDesc:"Stamped monthly after reconciliation. Scroll here to trigger the stamp animation.",
+    chartIncome:"Income", chartExpense:"Expense", chartBalance:"Balance",
+    dashboardTitle:"Finance Dashboard", dashboardDesc:"Live totals for this term's income and expenses.",
+    metricIncome:"Total income", metricExpense:"Total expense", metricBalance:"Balance", metricEvents:"Events",
+    policyTitle:"Finance Policy", policy1:"All expenses must be approved by the meeting or department supervisor before execution.", policy2:"Monthly closing summaries and reconciliation records are published after each cycle.", policy3:"Any unusual expenses will include notes and supporting documents for review.",
+    queryTitle:"Payment Check", queryDesc:"Simply enter your student ID to check your status without revealing your name.", queryLabel:"Enter student ID", queryBtn:"Check",
+    privacyNote:"* Results never include names, only membership status.",
+    contactTitle:"Contact Us", contactDesc:"If you want to learn about events, request collaboration, join as a member, or share feedback, please feel free to contact us through the channels below.", contactInfoTitle:"Contact Info", contactInfoDesc:"You can reach us by email, Instagram, or our official Line account.",
+    feedbackTitle:"Anonymous Feedback", feedbackDesc:"If you have any ideas, suggestions, or partnership proposals, feel free to leave a message below — we will not record your identity.", feedbackBtn:"Submit feedback", feedbackPh:"Tell us anything…", feedbackContactPh:"Contact info (optional, so we can reply)",
+    faqTitle:"FAQ",
+    footer1:"Site data is managed live by the officer backend — every update syncs automatically."
+  }
+};
+
+function toggleLang(){
+  currentLang = currentLang === 'zh' ? 'en' : 'zh';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.getAttribute('data-i18n');
+    if(dict[currentLang][key]) el.innerHTML = dict[currentLang][key];
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
+    const key = el.getAttribute('data-i18n-ph');
+    if(dict[currentLang][key]) el.placeholder = dict[currentLang][key];
+  });
+  renderAllDynamicContent();
+}
+</script>
+
+</body>
+</html>
