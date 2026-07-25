@@ -153,13 +153,18 @@
   .stat b{ display:block; font-family:'JetBrains Mono',monospace; font-size:1.7rem; color:var(--paper); }
   .stat span{ font-size:0.78rem; color:rgba(234,226,200,0.55); }
 
-  .events{ display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:22px; }
+  .events{
+    display:flex; flex-direction:column; gap:16px;
+    max-height:340px; overflow-y:auto; padding-right:6px; scroll-behavior:smooth;
+  }
+  .events::-webkit-scrollbar{ width:6px; }
+  .events::-webkit-scrollbar-thumb{ background:rgba(234,226,200,0.3); border-radius:3px; }
   .ticket{
     background:linear-gradient(145deg, var(--paper), #f7f1df);
     color:var(--ink);
     border:1px solid rgba(27,42,65,0.08);
     border-radius:14px; overflow:hidden;
-    display:flex;
+    display:flex; cursor:pointer;
     box-shadow:0 16px 36px rgba(0,0,0,0.22);
     transition:transform 0.2s ease, box-shadow 0.2s ease;
   }
@@ -174,6 +179,29 @@
   .ticket-body{ padding:16px 18px; flex:1; }
   .ticket-body h3{ font-size:1rem; margin-bottom:6px; }
   .ticket-body p{ font-size:0.8rem; color:var(--gray); }
+
+  .event-modal-backdrop{
+    position:fixed; inset:0; background:rgba(27,42,65,0.6); z-index:100;
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .event-modal-backdrop.show{ display:flex; }
+  .event-modal{
+    background:var(--paper-soft); color:var(--ink); border-radius:16px;
+    max-width:520px; width:100%; max-height:85vh; overflow-y:auto;
+    padding:28px; position:relative; box-shadow:0 30px 60px rgba(0,0,0,0.4);
+  }
+  .event-modal-close{
+    position:absolute; top:16px; right:16px; background:none; border:none;
+    font-size:1.4rem; cursor:pointer; color:var(--gray); line-height:1;
+  }
+  .event-modal h3{ font-size:1.3rem; margin-bottom:14px; padding-right:24px; }
+  .event-modal-row{ display:flex; gap:10px; font-size:0.86rem; margin-bottom:10px; align-items:baseline; }
+  .event-modal-row b{ min-width:64px; color:var(--gray); font-weight:600; font-size:0.78rem; font-family:'JetBrains Mono',monospace; }
+  .event-modal-desc{ font-size:0.88rem; color:var(--ink); line-height:1.8; margin:14px 0; white-space:pre-wrap; }
+  .event-modal-price{ display:flex; gap:18px; margin:14px 0; }
+  .event-modal-price div{ flex:1; background:rgba(27,42,65,0.05); border-radius:10px; padding:12px; text-align:center; }
+  .event-modal-price span{ display:block; font-size:0.72rem; color:var(--gray); margin-bottom:4px; }
+  .event-modal-price b{ font-size:1.1rem; font-family:'JetBrains Mono',monospace; }
 
   .sponsors-carousel{
     display:flex; gap:18px; overflow-x:auto; scroll-snap-type:x mandatory;
@@ -202,6 +230,18 @@
   .scroll-hint{ font-size:0.72rem; color:rgba(234,226,200,0.45); margin-bottom:10px; font-family:'JetBrains Mono',monospace; }
 
   .resource-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px,1fr)); gap:22px; }
+  .portfolio-carousel{
+    display:flex; gap:18px; overflow-x:auto; scroll-snap-type:x mandatory;
+    padding:4px 4px 16px 4px; -webkit-overflow-scrolling:touch;
+  }
+  .portfolio-carousel::-webkit-scrollbar{ height:6px; }
+  .portfolio-carousel::-webkit-scrollbar-thumb{ background:rgba(234,226,200,0.3); border-radius:3px; }
+  .portfolio-carousel .resource-card{ flex:0 0 260px; scroll-snap-align:start; }
+  .resource-card.has-link{ cursor:pointer; }
+  .resource-card-link-btn{
+    display:inline-block; margin-top:6px; font-size:0.78rem; font-weight:700;
+    color:var(--stamp-red); text-decoration:underline;
+  }
   .resource-card{
     background:linear-gradient(145deg, var(--paper), #f7f1df);
     color:var(--ink); border:1px solid rgba(27,42,65,0.08);
@@ -421,6 +461,7 @@
       <p class="section-desc" id="events-desc" data-i18n="eventsDesc">本屆活動一覽，資料直接來自後台管理系統。</p>
     </div>
   </div>
+  <div class="scroll-hint" data-i18n="eventsScrollHint">↕ 上下滑動查看更多活動，點選卡片看詳情</div>
   <div class="events" id="events-list">
     <div style="color:rgba(234,226,200,0.5); font-size:0.85rem;">載入中…</div>
   </div>
@@ -492,15 +533,11 @@
       </table>
     </div>
     <div class="finance-side">
-      <div class="stamp-box">
-        <div class="stamp" id="approvalStamp" data-i18n="stampText">財務長<br>已核章</div>
-        <p data-i18n="stampDesc">每月結算後由財務長核章公開，捲動至此區自動觸發蓋章動畫。</p>
-      </div>
       <div class="chart-card">
-        <h3 style="margin-bottom:16px;">收支比例</h3>
-        <div class="bar-row"><span data-i18n="chartIncome">收入</span><div class="bar"><i id="bar-income" style="width:0%"></i></div><b id="val-income">$0</b></div>
-        <div class="bar-row"><span data-i18n="chartExpense">支出</span><div class="bar"><i id="bar-expense" style="width:0%"></i></div><b id="val-expense">$0</b></div>
-        <div class="bar-row"><span data-i18n="chartBalance">結餘</span><div class="bar"><i id="bar-balance" style="width:0%"></i></div><b id="val-balance">$0</b></div>
+        <h3 style="margin-bottom:16px;" data-i18n="perActivityTitle">活動收支比率</h3>
+        <div id="per-activity-list" style="max-height:280px; overflow-y:auto; padding-right:4px;">
+          <div style="color:var(--gray); font-size:0.8rem;">載入中…</div>
+        </div>
       </div>
     </div>
   </div>
@@ -559,7 +596,8 @@
       <p class="section-desc" id="portfolio-desc" data-i18n="portfolioDesc">展示科學會歷年活動成果、設計作品與執行成果，方便外部合作與回顧。</p>
     </div>
   </div>
-  <div class="resource-grid" id="portfolio-list">
+  <div class="scroll-hint" data-i18n="portfolioScrollHint">← 左右滑動查看所有作品 →</div>
+  <div class="portfolio-carousel" id="portfolio-list">
     <div style="color:rgba(234,226,200,0.5); font-size:0.85rem;">載入中…</div>
   </div>
 </section>
@@ -605,6 +643,10 @@
   <p data-i18n="footer1">本網站資料由幹部後台即時管理，資料每次更新自動同步，交接免煩惱。</p>
 </footer>
 
+<div class="event-modal-backdrop" id="event-modal-backdrop" onclick="if(event.target===this) closeEventModal()">
+  <div class="event-modal" id="event-modal"></div>
+</div>
+
 <script>
 /* ============================================================
    設定區：請填入你自己的 Supabase 專案資訊（跟後台 admin.html 同一組）
@@ -617,13 +659,6 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentLang = 'zh';
 let siteTextsCache = {};
 let cardsCache = { sponsors:[], membership:[], regulations:[], portfolio:[], faq:[] };
-
-/* ---- 蓋章動畫 ---- */
-const stamp = document.getElementById('approvalStamp');
-const io = new IntersectionObserver((entries)=>{
-  entries.forEach(e=>{ if(e.isIntersecting) stamp.classList.add('show'); });
-}, { threshold:0.5 });
-io.observe(stamp);
 
 /* ---- 繳費查詢：串接 Supabase RPC（不需登入，不會回傳姓名） ---- */
 async function checkPayment(){
@@ -728,11 +763,44 @@ function renderEvents(){
     const day = d ? d.getDate() : '—';
     const mon = d ? d.toLocaleString('en-US',{month:'short'}).toUpperCase() : '';
     return `
-    <div class="ticket">
+    <div class="ticket" onclick="openEventModal(${e.id})">
       <div class="ticket-date"><b>${day}</b><span>${mon}</span></div>
       <div class="ticket-body"><h3>${e.event_name}</h3><p>${currentLang==='zh'?'負責人':'Lead'}：${e.manager_name}　${e.status}</p></div>
     </div>`;
   }).join('');
+}
+
+function openEventModal(id){
+  const e = eventsCache.find(x=>x.id===id);
+  if(!e) return;
+  const zh = currentLang==='zh';
+  const rows = [];
+  if(e.event_date) rows.push([zh?'時間':'Date', e.event_date]);
+  if(e.location) rows.push([zh?'地點':'Location', e.location]);
+  rows.push([zh?'負責人':'Lead', e.manager_name]);
+  rows.push([zh?'狀態':'Status', e.status]);
+
+  const priceHtml = (e.price_member!=null || e.price_nonmember!=null) ? `
+    <div class="event-modal-price">
+      <div><span>${zh?'會員價':'Member'}</span><b>${e.price_member!=null ? '$'+Number(e.price_member).toLocaleString() : '—'}</b></div>
+      <div><span>${zh?'非會員價':'Non-member'}</span><b>${e.price_nonmember!=null ? '$'+Number(e.price_nonmember).toLocaleString() : '—'}</b></div>
+    </div>` : '';
+
+  const linkHtml = e.external_link ? `<a href="${e.external_link}" target="_blank" class="btn btn-primary" style="display:block; text-align:center; margin-top:14px; background:var(--ink); color:var(--paper);">${zh?'前往連結':'Open link'}</a>` : '';
+
+  document.getElementById('event-modal').innerHTML = `
+    <button class="event-modal-close" onclick="closeEventModal()">×</button>
+    <h3>${e.event_name}</h3>
+    ${rows.map(r=>`<div class="event-modal-row"><b>${r[0]}</b><span>${r[1]}</span></div>`).join('')}
+    ${e.description ? `<div class="event-modal-desc">${e.description}</div>` : ''}
+    ${priceHtml}
+    ${e.notes ? `<div class="event-modal-row" style="margin-top:10px;"><b>${zh?'備註':'Notes'}</b><span>${e.notes}</span></div>` : ''}
+    ${linkHtml}
+  `;
+  document.getElementById('event-modal-backdrop').classList.add('show');
+}
+function closeEventModal(){
+  document.getElementById('event-modal-backdrop').classList.remove('show');
 }
 
 /* ---- 內容卡片（贊助商 / 會員福利 / 章程規範 / 作品集 / FAQ）通用讀取＋雙語渲染 ---- */
@@ -761,12 +829,17 @@ function renderResourceSection(section, targetId){
   const box = document.getElementById(targetId);
   const list = cardsCache[section];
   if(!list.length){ box.innerHTML = `<div style="color:rgba(234,226,200,0.5);">${currentLang==='zh'?'尚無資料':'No data yet'}</div>`; return; }
-  box.innerHTML = list.map(c=>`
-    <div class="resource-card">
+  const zh = currentLang==='zh';
+  box.innerHTML = list.map(c=>{
+    const linkBtn = c.link_url ? `<a href="${c.link_url}" target="_blank" class="resource-card-link-btn" onclick="event.stopPropagation();">${section==='regulations' ? (zh?'查看完整章程 →':'View full document →') : (zh?'查看連結 →':'View link →')}</a>` : '';
+    return `
+    <div class="resource-card${c.link_url?' has-link':''}" ${c.link_url && section==='portfolio' ? `onclick="window.open('${c.link_url}','_blank')"` : ''}>
       ${c.image_url ? `<img src="${c.image_url}">` : ''}
       <h3>${pick(c,'title')}</h3>
       <p>${pick(c,'body')||''}</p>
-    </div>`).join('');
+      ${linkBtn}
+    </div>`;
+  }).join('');
 }
 function renderFaq(){
   const box = document.getElementById('faq-list');
@@ -792,9 +865,10 @@ function renderAllDynamicContent(){
 /* ---- 財務公開 ---- */
 async function loadFinance(yearId){
   const tbody = document.getElementById('finance-tbody');
-  if(!yearId){ tbody.innerHTML = '<tr><td colspan="4">尚未設定屆數</td></tr>'; return; }
+  const perActivityBox = document.getElementById('per-activity-list');
+  if(!yearId){ tbody.innerHTML = '<tr><td colspan="4">尚未設定屆數</td></tr>'; perActivityBox.innerHTML=''; return; }
   const { data: tx } = await sb.from('finances').select('*').eq('year_id', yearId).order('tx_date', { ascending:false });
-  const { data: events } = await sb.from('events').select('id').eq('year_id', yearId);
+  const { data: events } = await sb.from('events').select('id,event_name').eq('year_id', yearId);
 
   if(!tx || !tx.length){ tbody.innerHTML = '<tr><td colspan="4">尚無財務紀錄</td></tr>'; }
   else{
@@ -810,19 +884,40 @@ async function loadFinance(yearId){
   let income=0, expense=0;
   (tx||[]).forEach(t=>{ if(t.tx_type==='收入') income+=Number(t.amount); else expense+=Number(t.amount); });
   const balance = income-expense;
-  const max = Math.max(income, expense, Math.abs(balance), 1);
 
   document.getElementById('m-income').textContent = '$'+income.toLocaleString();
   document.getElementById('m-expense').textContent = '-$'+expense.toLocaleString();
   document.getElementById('m-balance').textContent = '$'+balance.toLocaleString();
   document.getElementById('m-events').textContent = (events||[]).length;
 
-  document.getElementById('val-income').textContent = '$'+income.toLocaleString();
-  document.getElementById('val-expense').textContent = '$'+expense.toLocaleString();
-  document.getElementById('val-balance').textContent = '$'+balance.toLocaleString();
-  document.getElementById('bar-income').style.width = Math.round(income/max*100)+'%';
-  document.getElementById('bar-expense').style.width = Math.round(expense/max*100)+'%';
-  document.getElementById('bar-balance').style.width = Math.round(Math.abs(balance)/max*100)+'%';
+  /* 活動收支比率：每個活動分開計算，避免全部擠在一起、資料再多也是同一張卡片內捲動 */
+  const perEvent = (events||[]).map(ev=>{
+    const evTx = (tx||[]).filter(t=>t.event_id===ev.id);
+    const evIncome = evTx.filter(t=>t.tx_type==='收入').reduce((s,t)=>s+Number(t.amount),0);
+    const evExpense = evTx.filter(t=>t.tx_type==='支出').reduce((s,t)=>s+Number(t.amount),0);
+    return { name: ev.event_name, income: evIncome, expense: evExpense };
+  }).filter(e=>e.income>0 || e.expense>0);
+
+  const otherTx = (tx||[]).filter(t=>!t.event_id);
+  const otherIncome = otherTx.filter(t=>t.tx_type==='收入').reduce((s,t)=>s+Number(t.amount),0);
+  const otherExpense = otherTx.filter(t=>t.tx_type==='支出').reduce((s,t)=>s+Number(t.amount),0);
+  if(otherIncome>0 || otherExpense>0){
+    perEvent.push({ name: currentLang==='zh'?'未關聯活動的常態收支':'General (not linked to an event)', income: otherIncome, expense: otherExpense });
+  }
+
+  if(!perEvent.length){
+    perActivityBox.innerHTML = `<div style="color:var(--gray); font-size:0.82rem;">${currentLang==='zh'?'尚無資料':'No data yet'}</div>`;
+  } else {
+    perActivityBox.innerHTML = perEvent.map(e=>{
+      const max = Math.max(e.income, e.expense, 1);
+      return `
+      <div style="margin-bottom:14px;">
+        <div style="font-size:0.82rem; font-weight:700; margin-bottom:6px;">${e.name}</div>
+        <div class="bar-row" style="margin-bottom:6px;"><span>${currentLang==='zh'?'收入':'In'}</span><div class="bar"><i style="width:${Math.round(e.income/max*100)}%; background:linear-gradient(90deg, var(--ledger-green), var(--ledger-green));"></i></div><b>$${e.income.toLocaleString()}</b></div>
+        <div class="bar-row"><span>${currentLang==='zh'?'支出':'Out'}</span><div class="bar"><i style="width:${Math.round(e.expense/max*100)}%; background:linear-gradient(90deg, var(--stamp-red), var(--stamp-red));"></i></div><b>$${e.expense.toLocaleString()}</b></div>
+      </div>`;
+    }).join('');
+  }
 
   const pbRows = document.getElementById('pb-rows');
   if(tx && tx.length){
@@ -865,9 +960,10 @@ const dict = {
     heroBtn1:"查詢我的繳費狀態", heroBtn2:"聯繫我們",
     pbTitle:"科學會活動存摺", pbBalance:"結餘",
     aboutTitle:"系介紹", aboutDesc:"這裡放科學會簡介、宗旨與組織架構，讓新生與外系朋友快速認識我們。", aboutP1:"應用英語科學會致力於連結系上師生、規劃迎新、學術交流與系務活動，並持續推動資訊透明與資源共享。", aboutP2:"我們相信，一個好的科學會，不只是辦活動，更是讓每位成員都能參與、看見、一起成長的共同空間。", statA:"學生規模", statB:"專業培養", statC:"創立轉型", statYearsValue:"5年", statCohortValue:"19屆", orgTitle:"組織架構", orgDesc:"會長 · 副會長 · 財務長 · 活動組 · 公關組 · 資訊組",
-    eventsTitle:"活動資訊", eventsDesc:"本屆活動一覽，資料直接來自後台管理系統。", sponsorsTitle:"贊助商資訊", sponsorsDesc:"展示合作贊助商與贊助內容，讓來訪者一眼了解本次活動的支持來源。",
-    membershipTitle:"會員福利", membershipDesc:"提供會員專屬活動優先權、資源共享與社群交流機會，讓每位成員都能更參與科學會。", regulationsTitle:"章程規範", regulationsDesc:"整理會員權利義務、活動執行規範與組織運作準則，讓制度更透明。", portfolioTitle:"作品集", portfolioDesc:"展示科學會歷年活動成果、設計作品與執行成果，方便外部合作與回顧。",
+    eventsTitle:"活動資訊", eventsDesc:"本屆活動一覽，資料直接來自後台管理系統。", eventsScrollHint:"↕ 上下滑動查看更多活動，點選卡片看詳情", sponsorsTitle:"贊助商資訊", sponsorsDesc:"展示合作贊助商與贊助內容，讓來訪者一眼了解本次活動的支持來源。",
+    membershipTitle:"會員福利", membershipDesc:"提供會員專屬活動優先權、資源共享與社群交流機會，讓每位成員都能更參與科學會。", regulationsTitle:"章程規範", regulationsDesc:"整理會員權利義務、活動執行規範與組織運作準則，讓制度更透明。", portfolioTitle:"作品集", portfolioDesc:"展示科學會歷年活動成果、設計作品與執行成果，方便外部合作與回顧。", portfolioScrollHint:"← 左右滑動查看所有作品 →",
     financeTitle:"財務公開", financeDesc:"財務資料直接來自後台，每一筆核銷紀錄都同步顯示。", th1:"日期", th2:"項目", th3:"收入", th4:"支出",
+    perActivityTitle:"活動收支比率",
     stampText:"財務長<br>已核章", stampDesc:"每月結算後由財務長核章公開，捲動至此區自動觸發蓋章動畫。",
     chartIncome:"收入", chartExpense:"支出", chartBalance:"結餘",
     dashboardTitle:"財務儀表板", dashboardDesc:"本屆累計收支即時統計。",
@@ -890,9 +986,10 @@ const dict = {
     heroBtn1:"Check my payment status", heroBtn2:"Contact us",
     pbTitle:"Association Ledger", pbBalance:"Balance",
     aboutTitle:"About Us", aboutDesc:"This section introduces the student association's mission, purpose, and structure so new students and visitors can quickly get to know us.", aboutP1:"The Applied English Student Association is committed to connecting students and faculty, organizing orientation activities, academic exchange, and department events, while continuing to promote transparency and resource sharing.", aboutP2:"We believe a strong student association is not only about hosting events, but also about creating a space where every member can participate, see, and grow together.", statA:"Student scale", statB:"Professional training", statC:"Founding transformation", statYearsValue:"5 years", statCohortValue:"19th generation", orgTitle:"Org Structure", orgDesc:"President · Vice President · Treasurer · Events Team · Public Relations Team · IT Team",
-    eventsTitle:"Events", eventsDesc:"A view of this term's events, with content managed directly from the admin system.", sponsorsTitle:"Sponsors", sponsorsDesc:"Showcase our partners and sponsorship contributions so visitors can quickly understand who supports the activities.",
-    membershipTitle:"Membership Benefits", membershipDesc:"Provide members with priority access to activities, shared resources, and community opportunities so they can engage more with the association.", regulationsTitle:"Rules & Regulations", regulationsDesc:"Organize member rights, activity guidelines, and operational standards to make the system more transparent.", portfolioTitle:"Portfolio", portfolioDesc:"Showcase the association's past event results, design work, and execution highlights for partners and reviewers.",
+    eventsTitle:"Events", eventsDesc:"A view of this term's events, with content managed directly from the admin system.", eventsScrollHint:"↕ Scroll for more events, tap a card for details", sponsorsTitle:"Sponsors", sponsorsDesc:"Showcase our partners and sponsorship contributions so visitors can quickly understand who supports the activities.",
+    membershipTitle:"Membership Benefits", membershipDesc:"Provide members with priority access to activities, shared resources, and community opportunities so they can engage more with the association.", regulationsTitle:"Rules & Regulations", regulationsDesc:"Organize member rights, activity guidelines, and operational standards to make the system more transparent.", portfolioTitle:"Portfolio", portfolioDesc:"Showcase the association's past event results, design work, and execution highlights for partners and reviewers.", portfolioScrollHint:"← Swipe to see all portfolio items →",
     financeTitle:"Finance", financeDesc:"Financial records come directly from the backend, and each reimbursement entry is synced in real time.", th1:"Date", th2:"Item", th3:"Income", th4:"Expense",
+    perActivityTitle:"Income/Expense by Activity",
     stampText:"Approved<br>by Treasurer", stampDesc:"Stamped monthly after reconciliation. Scroll here to trigger the stamp animation.",
     chartIncome:"Income", chartExpense:"Expense", chartBalance:"Balance",
     dashboardTitle:"Finance Dashboard", dashboardDesc:"Live totals for this term's income and expenses.",
