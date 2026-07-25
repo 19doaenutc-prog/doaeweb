@@ -567,9 +567,9 @@ async function uploadReceipt(txId, file){
   if(!file) return;
   showToast('上傳中…');
   const path = `${txId}-${Date.now()}-${file.name}`;
-  const { error: upErr } = await sb.storage.from('receipt').upload(path, file, { upsert:true });
+  const { error: upErr } = await sb.storage.from('receipts').upload(path, file, { upsert:true });
   if(upErr){ showToast('上傳失敗：'+upErr.message); return; }
-  const { data: pub } = sb.storage.from('receipt').getPublicUrl(path);
+  const { data: pub } = sb.storage.from('receipts').getPublicUrl(path);
   await sb.from('finances').update({ receipt_image: pub.publicUrl, status:'已核銷' }).eq('id', txId);
   showToast('發票已上傳，自動核銷完成');
   renderFinances();
