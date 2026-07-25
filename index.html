@@ -210,6 +210,7 @@
   .sponsors-carousel::-webkit-scrollbar{ height:6px; }
   .sponsors-carousel::-webkit-scrollbar-thumb{ background:rgba(234,226,200,0.3); border-radius:3px; }
   .sponsor-card{
+    cursor:pointer;
     background:linear-gradient(145deg, var(--paper), #f7f1df);
     color:var(--ink); border:1px solid rgba(27,42,65,0.08);
     border-radius:14px; padding:22px;
@@ -818,12 +819,27 @@ function renderSponsors(){
   const box = document.getElementById('sponsors-list');
   const list = cardsCache.sponsors;
   if(!list.length){ box.innerHTML = `<div style="color:rgba(234,226,200,0.5);">${currentLang==='zh'?'尚無資料':'No data yet'}</div>`; return; }
-  box.innerHTML = list.map(c=>`
-    <div class="sponsor-card">
+  box.innerHTML = list.map((c,i)=>`
+    <div class="sponsor-card" onclick="openSponsorModal(${i})">
       <div class="sponsor-logo">${c.image_url ? `<img src="${c.image_url}">` : (pick(c,'title')||'')}</div>
       <h3>${pick(c,'title')}</h3>
       <p>${pick(c,'body')||''}</p>
     </div>`).join('');
+}
+
+function openSponsorModal(idx){
+  const c = cardsCache.sponsors[idx];
+  if(!c) return;
+  const zh = currentLang==='zh';
+  const linkHtml = c.link_url ? `<a href="${c.link_url}" target="_blank" class="btn btn-primary" style="display:block; text-align:center; margin-top:14px; background:var(--ink); color:var(--paper);">${zh?'前往連結':'Open link'}</a>` : '';
+  document.getElementById('event-modal').innerHTML = `
+    <button class="event-modal-close" onclick="closeEventModal()">×</button>
+    ${c.image_url ? `<img src="${c.image_url}" style="width:100%; max-height:260px; object-fit:contain; border-radius:12px; margin-bottom:16px; background:rgba(27,42,65,0.03);">` : ''}
+    <h3>${pick(c,'title')}</h3>
+    ${c.body || c.body_en ? `<div class="event-modal-desc">${pick(c,'body')}</div>` : ''}
+    ${linkHtml}
+  `;
+  document.getElementById('event-modal-backdrop').classList.add('show');
 }
 function renderResourceSection(section, targetId){
   const box = document.getElementById(targetId);
