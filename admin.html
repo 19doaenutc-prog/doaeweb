@@ -448,7 +448,7 @@ async function renderEvents(){
         <div style="margin-top:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <span class="badge ${badgeCls}">${e.status}</span>
           <button class="btn btn-ghost btn-sm" onclick="cycleEventStatus(${e.id}, '${e.status}')">變更狀態</button>
-          <button class="btn btn-ghost btn-sm" onclick="openEditEventModal(${e.id})">編輯預算/人數</button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditEventModal(${e.id})">編輯活動詳情</button>
         </div>
       </div>`;
     });
@@ -476,7 +476,13 @@ function openEditEventModal(id){
     if(!e) return;
     const modal = document.getElementById('modal');
     modal.innerHTML = `
-    <h3>編輯活動預算與人數</h3>
+    <h3>編輯活動詳情</h3>
+    <label>地點</label><input id="f-e_location" value="${e.location||''}">
+    <label>活動說明</label><textarea id="f-e_desc" rows="3">${e.description||''}</textarea>
+    <label>連結（選填）</label><input id="f-e_link" type="url" value="${e.external_link||''}">
+    <label>會員價（選填）</label><input id="f-e_price_m" type="number" value="${e.price_member||''}">
+    <label>非會員價（選填）</label><input id="f-e_price_nm" type="number" value="${e.price_nonmember||''}">
+    <label>補充說明（選填）</label><textarea id="f-e_notes" rows="2">${e.notes||''}</textarea>
     <label>預算</label><input id="f-e_budget" type="number" value="${e.budget||''}">
     <label>預估參加人數</label><input id="f-e_est" type="number" value="${e.est_participants||''}">
     <label>實際參加人數</label><input id="f-e_act" type="number" value="${e.act_participants||''}">
@@ -492,7 +498,15 @@ async function submitEditEvent(id){
   const budget = document.getElementById('f-e_budget').value;
   const est = document.getElementById('f-e_est').value;
   const act = document.getElementById('f-e_act').value;
+  const priceM = document.getElementById('f-e_price_m').value;
+  const priceNM = document.getElementById('f-e_price_nm').value;
   await sb.from('events').update({
+    location: document.getElementById('f-e_location').value.trim() || null,
+    description: document.getElementById('f-e_desc').value.trim() || null,
+    external_link: document.getElementById('f-e_link').value.trim() || null,
+    price_member: priceM ? Number(priceM) : null,
+    price_nonmember: priceNM ? Number(priceNM) : null,
+    notes: document.getElementById('f-e_notes').value.trim() || null,
     budget: budget ? Number(budget) : null,
     est_participants: est ? Number(est) : null,
     act_participants: act ? Number(act) : null
@@ -552,10 +566,10 @@ async function renderFinances(){
 async function uploadReceipt(txId, file){
   if(!file) return;
   showToast('上傳中…');
-  const path = `receipts/${txId}-${Date.now()}-${file.name}`;
-  const { error: upErr } = await sb.storage.from('receipts').upload(path, file, { upsert:true });
+  const path = `${txId}-${Date.now()}-${file.name}`;
+  const { error: upErr } = await sb.storage.from('receipt').upload(path, file, { upsert:true });
   if(upErr){ showToast('上傳失敗：'+upErr.message); return; }
-  const { data: pub } = sb.storage.from('receipts').getPublicUrl(path);
+  const { data: pub } = sb.storage.from('receipt').getPublicUrl(path);
   await sb.from('finances').update({ receipt_image: pub.publicUrl, status:'已核銷' }).eq('id', txId);
   showToast('發票已上傳，自動核銷完成');
   renderFinances();
@@ -726,6 +740,7 @@ async function renderSite(){
         <div class="card-name">${c.title}</div>
         <div class="card-sub">${c.body||''}</div>
         ${c.title_en ? `<div class="card-sub" style="margin-top:6px; opacity:.7;">EN: ${c.title_en}${c.body_en?' — '+c.body_en:''}</div>` : ''}
+        ${c.link_url ? `<div class="card-sub" style="margin-top:6px;">🔗 <a href="${c.link_url}" target="_blank" style="color:var(--ink-soft); text-decoration:underline;">${c.link_url}</a></div>` : ''}
         <div class="card-actions">
           <button class="btn btn-ghost btn-sm" onclick="deleteContentCard(${c.id})">刪除</button>
         </div>
@@ -788,6 +803,12 @@ function openAddModal(){
     <label>活動名稱</label><input id="f-event_name">
     <label>負責人</label><input id="f-manager_name">
     <label>活動日期</label><input id="f-event_date" type="date">
+    <label>地點</label><input id="f-event_location">
+    <label>活動說明</label><textarea id="f-event_desc" rows="3"></textarea>
+    <label>連結（選填，報名/資訊頁）</label><input id="f-event_link" type="url" placeholder="https://...">
+    <label>會員價（選填）</label><input id="f-event_price_m" type="number">
+    <label>非會員價（選填）</label><input id="f-event_price_nm" type="number">
+    <label>補充說明（選填）</label><textarea id="f-event_notes" rows="2"></textarea>
     <label>預算（選填）</label><input id="f-event_budget" type="number">
     <label>預估參加人數（選填）</label><input id="f-event_est" type="number">
     <div class="modal-actions">
@@ -817,6 +838,7 @@ function openAddModal(){
     <label>${label1}（English，選填）</label><input id="f-c_title_en">
     <label>${label2}（中文）</label><input id="f-c_body">
     <label>${label2}（English，選填）</label><input id="f-c_body_en">
+    <label>連結網址（選填，例如 Google Doc、作品連結）</label><input id="f-c_link" type="url" placeholder="https://...">
     ${needImage ? `<label>圖片</label><input id="f-c_image" type="file" accept="image/*">` : ''}
     <label>排序（數字越小越前面）</label><input id="f-c_sort" type="number" value="0">
     <div class="modal-actions">
@@ -874,10 +896,20 @@ async function submitEvent(){
   if(!event_name){ showToast('請填寫活動名稱'); return; }
   const budget = document.getElementById('f-event_budget').value;
   const est = document.getElementById('f-event_est').value;
+  const priceM = document.getElementById('f-event_price_m').value;
+  const priceNM = document.getElementById('f-event_price_nm').value;
   const { error } = await sb.from('events').insert({
     year_id: currentYearId, event_name,
     manager_name: document.getElementById('f-manager_name').value.trim(),
-    event_date: document.getElementById('f-event_date').value || null
+    event_date: document.getElementById('f-event_date').value || null,
+    location: document.getElementById('f-event_location').value.trim() || null,
+    description: document.getElementById('f-event_desc').value.trim() || null,
+    external_link: document.getElementById('f-event_link').value.trim() || null,
+    price_member: priceM ? Number(priceM) : null,
+    price_nonmember: priceNM ? Number(priceNM) : null,
+    notes: document.getElementById('f-event_notes').value.trim() || null,
+    budget: budget ? Number(budget) : null,
+    est_participants: est ? Number(est) : null
   });
   if(error){ showToast('新增失敗：'+error.message); return; }
   closeModal(); showToast('活動已新增'); renderEvents();
@@ -908,9 +940,9 @@ async function submitContentCard(){
     showToast('上傳圖片中…');
     const file = fileInput.files[0];
     const path = `${currentSiteSection}/${Date.now()}-${file.name}`;
-    const { error: upErr } = await sb.storage.from('site-images').upload(path, file, { upsert:true });
+    const { error: upErr } = await sb.storage.from('site-image').upload(path, file, { upsert:true });
     if(upErr){ showToast('圖片上傳失敗：'+upErr.message); return; }
-    const { data: pub } = sb.storage.from('site-images').getPublicUrl(path);
+    const { data: pub } = sb.storage.from('site-image').getPublicUrl(path);
     image_url = pub.publicUrl;
   }
   const { error } = await sb.from('content_cards').insert({
@@ -918,6 +950,7 @@ async function submitContentCard(){
     title_en: document.getElementById('f-c_title_en').value.trim() || null,
     body: document.getElementById('f-c_body').value.trim(),
     body_en: document.getElementById('f-c_body_en').value.trim() || null,
+    link_url: document.getElementById('f-c_link').value.trim() || null,
     image_url,
     sort_order: parseInt(document.getElementById('f-c_sort').value) || 0
   });
