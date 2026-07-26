@@ -399,6 +399,31 @@ async function cyclePayment(student_no, target_year, curStatus){
   renderMembers();
 }
 
+/* ---- 通用 CSV 匯出工具：把物件陣列轉成 CSV 並觸發下載 ---- */
+function exportCSV(filename, rows){
+  if(!rows || !rows.length){ showToast('沒有可匯出的資料'); return; }
+  const headers = Object.keys(rows[0]);
+  const escapeCell = (val)=>{
+    const s = (val===null||val===undefined) ? '' : String(val);
+    if(/[",\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+    return s;
+  };
+  const csvLines = [
+    headers.map(escapeCell).join(','),
+    ...rows.map(row => headers.map(h=>escapeCell(row[h])).join(','))
+  ];
+  // 加上 BOM，避免 Excel 開啟中文 CSV 時出現亂碼
+  const blob = new Blob(['\uFEFF' + csvLines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 async function exportMembersCSV(){
   const { data: members } = await sb.from('members').select('*').order('student_no');
   const { data: payments } = await sb.from('member_payments').select('*');
