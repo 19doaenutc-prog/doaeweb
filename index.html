@@ -580,10 +580,6 @@
     </div>
     <div class="query-result" id="queryResult"></div>
     <div class="privacy-note" data-i18n="privacyNote">＊查詢結果不會顯示姓名，僅顯示會員資格狀態。</div>
-    <div style="margin-top:16px; border-top:1px dashed rgba(27,42,65,0.25); padding-top:14px;">
-      <button class="btn btn-ghost" style="border-color:rgba(27,42,65,0.3); color:var(--ink); font-size:0.8rem; padding:9px 16px;" onclick="checkHistory()" data-i18n="historyBtn">查詢完整繳費紀錄（歷年）</button>
-      <div id="historyResult" style="margin-top:12px;"></div>
-    </div>
   </div>
 </section>
 
@@ -686,27 +682,6 @@ async function submitFeedback(){
   document.getElementById('feedback-contact').value = '';
   result.textContent = currentLang==='zh' ? '已送出，謝謝你的回饋！' : 'Submitted — thank you!';
   result.className = 'feedback-result ok';
-}
-
-/* ---- 跨屆繳費歷史查詢 ---- */
-async function checkHistory(){
-  const val = document.getElementById('sid').value.trim();
-  const box = document.getElementById('historyResult');
-  if(!val){ box.innerHTML = `<div style="color:var(--stamp-red); font-size:0.85rem;">${currentLang==='zh'?'請先輸入學號':'Please enter a student ID first'}</div>`; return; }
-  box.innerHTML = `<div style="font-size:0.85rem; color:var(--gray);">${currentLang==='zh'?'查詢中…':'Checking…'}</div>`;
-  const { data, error } = await sb.rpc('get_member_payment_history', { p_student_no: val });
-  if(error || !data || !data.length){
-    box.innerHTML = `<div style="font-size:0.85rem; color:var(--gray);">${currentLang==='zh'?'查無歷史紀錄':'No history found'}</div>`;
-    return;
-  }
-  const rows = data.map(r=>{
-    const color = r.status==='已足額' ? 'var(--ledger-green)' : r.status==='寬免免繳' ? 'var(--gray)' : 'var(--stamp-red)';
-    return `<div class="metric-row" style="border-color:rgba(27,42,65,0.15);">
-      <span>${currentLang==='zh'?'第':''}${r.target_year}${currentLang==='zh'?'期':'th term'}</span>
-      <b style="color:${color};">${r.status}</b>
-    </div>`;
-  }).join('');
-  box.innerHTML = `<div style="background:rgba(27,42,65,0.03); border-radius:8px; padding:12px 16px;">${rows}</div>`;
 }
 
 /* ---- 讀取目前使用中屆數 ---- */
@@ -987,7 +962,6 @@ const dict = {
     policyTitle:"財務政策說明", policy1:"所有支出需先經會議或主管核准後執行。", policy2:"每月結算後會公開帳務摘要與對帳紀錄。", policy3:"如有異常支出，會附上說明與補充附件供查閱。",
     queryTitle:"繳費查詢", queryDesc:"僅需輸入學號即可查詢，不顯示姓名，保護個資。", queryLabel:"輸入學號查詢繳費狀態", queryBtn:"查詢",
     privacyNote:"＊查詢結果不會顯示姓名，僅顯示會員資格狀態。",
-    historyBtn:"查詢完整繳費紀錄（歷年）",
     contactTitle:"聯繫我們", contactDesc:"若你想了解活動、申請合作、加入會員，或提供建議，歡迎透過以下方式與我們聯絡。", contactInfoTitle:"聯絡資訊", contactInfoDesc:"可透過 Email、Instagram 或官方 Line 與我們取得聯繫。",
     feedbackTitle:"匿名回饋", feedbackDesc:"若你有任何想法、建議或合作提案，歡迎在下方留言，我們不會記錄你的身分。", feedbackBtn:"送出回饋", feedbackPh:"想跟我們說的話…", feedbackContactPh:"聯絡方式（選填，方便我們回覆你）",
     faqTitle:"常見問題",
@@ -1013,7 +987,6 @@ const dict = {
     policyTitle:"Finance Policy", policy1:"All expenses must be approved by the meeting or department supervisor before execution.", policy2:"Monthly closing summaries and reconciliation records are published after each cycle.", policy3:"Any unusual expenses will include notes and supporting documents for review.",
     queryTitle:"Payment Check", queryDesc:"Simply enter your student ID to check your status without revealing your name.", queryLabel:"Enter student ID", queryBtn:"Check",
     privacyNote:"* Results never include names, only membership status.",
-    historyBtn:"View full payment history (all years)",
     contactTitle:"Contact Us", contactDesc:"If you want to learn about events, request collaboration, join as a member, or share feedback, please feel free to contact us through the channels below.", contactInfoTitle:"Contact Info", contactInfoDesc:"You can reach us by email, Instagram, or our official Line account.",
     feedbackTitle:"Anonymous Feedback", feedbackDesc:"If you have any ideas, suggestions, or partnership proposals, feel free to leave a message below — we will not record your identity.", feedbackBtn:"Submit feedback", feedbackPh:"Tell us anything…", feedbackContactPh:"Contact info (optional, so we can reply)",
     faqTitle:"FAQ",
